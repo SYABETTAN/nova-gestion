@@ -26,7 +26,6 @@ describe("inscription production", () => {
 
   it("bloque l'inscription publique en production par défaut (invite_only)", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -40,7 +39,6 @@ describe("inscription production", () => {
 
   it("refuse registerUser en production via l'action serveur", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -56,7 +54,6 @@ describe("inscription production", () => {
 
   it("refuse registerAction même si l'UI est contournée", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -77,7 +74,6 @@ describe("inscription production", () => {
 
   it("autorise l'inscription en développement (open_dev)", async () => {
     vi.stubEnv("APP_ENV", "development");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("REGISTRATION_MODE", "open_dev");
 
     const { isPublicOrganizationSignupAllowed, assertPublicOrganizationSignupAllowed } =
@@ -108,7 +104,6 @@ describe("inscription production", () => {
 
   it("permet l'onboarding ops même quand l'inscription publique est fermée", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -128,7 +123,6 @@ describe("inscription production", () => {
 
   it("refuse ALLOW_PUBLIC_SIGNUP sans REGISTRATION_MODE=open_dev en production", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -141,7 +135,6 @@ describe("inscription production", () => {
 
   it("refuse open_dev en production sans ALLOW_PUBLIC_SIGNUP explicite", async () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
@@ -225,7 +218,6 @@ describe("inscription — mode par défaut dev", () => {
 
   it("utilise open_dev en développement sans variable explicite", async () => {
     vi.stubEnv("APP_ENV", "development");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
 
     const { getRegistrationMode } = await loadRegistrationModule();
     expect(getRegistrationMode()).toBe("open_dev");

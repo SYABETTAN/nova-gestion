@@ -54,6 +54,11 @@ jobs:
       - name: Apply migrations
         run: npx prisma migrate deploy
 
+      - name: Seed roles and permissions
+        run: npm run db:seed:production
+        env:
+          SEED_DEV_DATA: "false"
+
       - name: Lint
         run: npm run lint
 

@@ -60,7 +60,6 @@ describe("production guards", () => {
 
   it("refuse SEED_DEV_DATA quand APP_ENV vaut production", () => {
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "production-secret-key-32-chars-min!!");
     vi.stubEnv("SEED_DEV_DATA", "true");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");

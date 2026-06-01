@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { createAuditLog, getAuditLogs } from "@/lib/audit";
+import { createOrganizationWithOwner } from "@/lib/organization-create";
 
 const prisma = new PrismaClient();
 
@@ -9,22 +10,25 @@ describe("audit", () => {
   let userId: string;
 
   beforeAll(async () => {
-    const org = await prisma.organization.findUnique({
-      where: { slug: "nova-gestion" },
-    });
-    const user = await prisma.user.findUnique({
-      where: { email: "owner@dev.local" },
-    });
-
-    if (!org || !user) {
-      throw new Error("Seed data required — run npm run db:seed first");
+    const ownerRole = await prisma.role.findUnique({ where: { key: "OWNER" } });
+    if (!ownerRole) {
+      throw new Error("Roles non seedés — exécutez npm run db:seed:production");
     }
 
-    organizationId = org.id;
-    userId = user.id;
+    const email = `audit-${Date.now()}@test.local`;
+    const result = await createOrganizationWithOwner(`Audit Org ${Date.now()}`, email, "AuditTest123!");
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    organizationId = result.organizationId;
+    userId = result.userId;
   });
 
   afterAll(async () => {
+    if (organizationId) {
+      await prisma.organization.delete({ where: { id: organizationId } }).catch(() => undefined);
+    }
     await prisma.$disconnect();
   });
 

@@ -60,7 +60,6 @@ describe("auth security", () => {
   it("refuse SESSION_SECRET par défaut en production", async () => {
     vi.resetModules();
     vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://u:p@localhost:5432/test");
     vi.stubEnv("SESSION_SECRET", "development-only-secret-min-32-chars!!");
     vi.stubEnv("SEED_DEV_DATA", "false");
     vi.stubEnv("ENABLE_DEV_LOGIN", "false");
