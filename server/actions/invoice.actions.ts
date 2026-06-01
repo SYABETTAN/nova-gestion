@@ -16,7 +16,6 @@ import {
   updateInvoiceSchema,
   type InvoiceLineInput,
 } from "@/lib/invoice-validators";
-import { computeInvoiceStats } from "@/lib/invoice-utils";
 import {
   getCustomersForInvoiceFilterQuery,
   getInvoiceByIdQuery,
@@ -203,8 +202,7 @@ export async function listInvoicesAction(searchParams: Record<string, string | u
 export async function getInvoiceStatsAction() {
   const user = await requireAuth();
   requirePermission(user, "INVOICES_READ");
-  const invoices = await getInvoiceStatsQuery(user.organizationId);
-  return computeInvoiceStats(invoices);
+  return getInvoiceStatsQuery(user.organizationId);
 }
 
 export async function getInvoiceByIdAction(id: string) {

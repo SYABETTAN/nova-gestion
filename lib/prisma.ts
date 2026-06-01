@@ -6,9 +6,14 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createClient() {
-  const base = new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+  const log: ("error" | "warn" | "query")[] =
+    process.env.NODE_ENV === "development" && process.env.PRISMA_LOG_QUERIES === "true"
+      ? ["error", "warn", "query"]
+      : process.env.NODE_ENV === "development"
+        ? ["error", "warn"]
+        : ["error"];
+
+  const base = new PrismaClient({ log });
 
   return base.$extends({
     query: {

@@ -8,8 +8,8 @@ export type CustomerListInclude = {
 };
 
 const defaultInclude = {
-  tagAssignments: { include: { tag: true } },
-  addresses: true,
+  tagAssignments: { include: { tag: { select: { id: true, name: true, color: true } } } },
+  addresses: { where: { isDefault: true }, take: 1, select: { city: true } },
 } satisfies Prisma.CustomerInclude;
 
 export function buildCustomerWhere(
@@ -119,12 +119,20 @@ export async function getCustomerByIdQuery(organizationId: string, id: string) {
 }
 
 export async function getCustomerStatsQuery(organizationId: string) {
-  const customers = await prisma.customer.findMany({
-    where: { organizationId },
-    select: { status: true, outstandingAmount: true, isArchived: true },
-  });
+  const baseWhere = { organizationId, isArchived: false };
+  const [total, prospects, active, outstanding] = await Promise.all([
+    prisma.customer.count({ where: baseWhere }),
+    prisma.customer.count({ where: { ...baseWhere, status: "PROSPECT" } }),
+    prisma.customer.count({ where: { ...baseWhere, status: "ACTIVE" } }),
+    prisma.customer.aggregate({ where: baseWhere, _sum: { outstandingAmount: true } }),
+  ]);
 
-  return customers;
+  return {
+    total,
+    prospects,
+    active,
+    totalOutstanding: outstanding._sum.outstandingAmount ?? 0,
+  };
 }
 
 export async function getAllTagsQuery(organizationId: string) {

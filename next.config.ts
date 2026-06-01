@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const withBundleAnalyzer =
+  process.env.ANALYZE === "true"
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("@next/bundle-analyzer")({ enabled: true })
+    : (config: NextConfig) => config;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   env: {
@@ -10,6 +16,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
+  compress: true,
+  poweredByHeader: false,
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

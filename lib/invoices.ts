@@ -129,17 +129,58 @@ export async function getInvoiceByIdQuery(organizationId: string, id: string) {
 }
 
 export async function getInvoiceStatsQuery(organizationId: string) {
-  return prisma.invoice.findMany({
-    where: { organizationId },
-    select: {
-      status: true,
-      paymentStatus: true,
-      totalIncludingTax: true,
-      amountPaid: true,
-      amountDue: true,
-      isArchived: true,
-    },
-  });
+  const base = { organizationId, isArchived: false };
+
+  const [
+    total,
+    drafts,
+    validatedOrSent,
+    paid,
+    overdue,
+    toCollectAgg,
+    totalInvoicedAgg,
+    totalPaidAgg,
+    totalUnpaidAgg,
+    validatedCount,
+  ] = await Promise.all([
+    prisma.invoice.count({ where: base }),
+    prisma.invoice.count({ where: { ...base, status: "DRAFT" } }),
+    prisma.invoice.count({ where: { ...base, status: { in: ["VALIDATED", "SENT"] } } }),
+    prisma.invoice.count({ where: { ...base, status: "PAID" } }),
+    prisma.invoice.count({
+      where: { ...base, OR: [{ status: "OVERDUE" }, { paymentStatus: "OVERDUE" }] },
+    }),
+    prisma.invoice.aggregate({
+      where: { ...base, status: { notIn: ["PAID", "CANCELLED", "CREDITED", "DRAFT"] } },
+      _sum: { amountDue: true },
+    }),
+    prisma.invoice.aggregate({
+      where: { ...base, status: { notIn: ["DRAFT", "CANCELLED"] } },
+      _sum: { totalIncludingTax: true },
+    }),
+    prisma.invoice.aggregate({ where: base, _sum: { amountPaid: true } }),
+    prisma.invoice.aggregate({
+      where: { ...base, status: { notIn: ["PAID", "CANCELLED", "CREDITED"] } },
+      _sum: { amountDue: true },
+    }),
+    prisma.invoice.count({ where: { ...base, status: { not: "DRAFT" } } }),
+  ]);
+
+  const { moneyToNumber } = await import("@/lib/money");
+  const totalInvoiced = moneyToNumber(totalInvoicedAgg._sum.totalIncludingTax ?? 0);
+
+  return {
+    total,
+    drafts,
+    validatedOrSent,
+    paid,
+    overdue,
+    toCollect: moneyToNumber(toCollectAgg._sum.amountDue ?? 0),
+    totalInvoiced,
+    totalPaid: moneyToNumber(totalPaidAgg._sum.amountPaid ?? 0),
+    totalUnpaid: moneyToNumber(totalUnpaidAgg._sum.amountDue ?? 0),
+    averageBasket: validatedCount > 0 ? totalInvoiced / validatedCount : 0,
+  };
 }
 
 export async function getInvoicesForExportQuery(

@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
 import { generateNextNumber } from "@/lib/numbering";
+import { moneyToNumber } from "@/lib/money";
 import { generateCustomersCsv } from "@/lib/csv";
 import {
   createCustomerSchema,
@@ -44,9 +45,13 @@ export async function getCustomerStatsAction() {
   const user = await requireAuth();
   requirePermission(user, "CUSTOMERS_READ");
 
-  const customers = await getCustomerStatsQuery(user.organizationId);
-  const { computeCustomerStats } = await import("@/lib/customer-utils");
-  return computeCustomerStats(customers);
+  const stats = await getCustomerStatsQuery(user.organizationId);
+  return {
+    total: stats.total,
+    prospects: stats.prospects,
+    active: stats.active,
+    totalOutstanding: moneyToNumber(stats.totalOutstanding),
+  };
 }
 
 export async function getCustomerByIdAction(id: string) {

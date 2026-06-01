@@ -24,7 +24,6 @@ import {
   getQuoteStatsQuery,
   listQuotesQuery,
 } from "@/lib/quotes";
-import { computeQuoteStats } from "@/lib/quote-utils";
 import {
   mapMoneyFieldsToDb,
   INVOICE_LINE_MONEY_FIELDS,
@@ -144,9 +143,7 @@ export async function listQuotesAction(searchParams: Record<string, string | und
 export async function getQuoteStatsAction() {
   const user = await requireAuth();
   requirePermission(user, "QUOTES_READ");
-
-  const quotes = await getQuoteStatsQuery(user.organizationId);
-  return computeQuoteStats(quotes);
+  return getQuoteStatsQuery(user.organizationId);
 }
 
 export async function getQuoteByIdAction(id: string) {

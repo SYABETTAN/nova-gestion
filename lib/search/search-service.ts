@@ -21,32 +21,13 @@ import {
   supplierInvoiceStatusLabel,
 } from "@/lib/search/search-formatters";
 import type { SessionUser } from "@/lib/permissions";
+import { getCachedEnabledModules } from "@/lib/org-cache";
 
 const DEFAULT_LIMIT_PER_GROUP = 5;
 const DEFAULT_GLOBAL_LIMIT = 50;
 
 export async function loadEnabledModules(organizationId: string): Promise<Set<string>> {
-  const flags = await prisma.featureFlag.findMany({ where: { organizationId } });
-  const enabled = new Set<string>(["advancedSettings", "dashboard"]);
-  for (const f of flags) {
-    if (f.enabled) enabled.add(f.key);
-  }
-  if (flags.length === 0) {
-    [
-      "customers",
-      "items",
-      "quotes",
-      "invoices",
-      "payments",
-      "reminders",
-      "suppliers",
-      "supplierInvoices",
-      "accounting",
-      "exports",
-      "documents",
-    ].forEach((k) => enabled.add(k));
-  }
-  return enabled;
+  return getCachedEnabledModules(organizationId);
 }
 
 export async function loadFavoriteKeys(
@@ -122,7 +103,7 @@ export async function searchItems(organizationId: string, query: string, limit =
         { category: { name: q } },
       ],
     },
-    include: { category: true },
+    include: { category: { select: { name: true } } },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
@@ -154,7 +135,7 @@ export async function searchQuotes(organizationId: string, query: string, limit 
         { customer: { name: q } },
       ],
     },
-    include: { customer: true },
+    include: { customer: { select: { name: true } } },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
@@ -187,7 +168,7 @@ export async function searchInvoices(organizationId: string, query: string, limi
         { customer: { name: q } },
       ],
     },
-    include: { customer: true },
+    include: { customer: { select: { name: true } } },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
@@ -222,7 +203,7 @@ export async function searchPayments(organizationId: string, query: string, limi
         { customer: { name: q } },
       ],
     },
-    include: { customer: true },
+    include: { customer: { select: { name: true } } },
     take: limit,
     orderBy: { paymentDate: "desc" },
   });
@@ -255,7 +236,10 @@ export async function searchReminders(organizationId: string, query: string, lim
         { invoice: { invoiceNumber: q } },
       ],
     },
-    include: { customer: true, invoice: true },
+    include: {
+      customer: { select: { name: true } },
+      invoice: { select: { invoiceNumber: true } },
+    },
     take: limit,
     orderBy: { createdAt: "desc" },
   });
@@ -325,7 +309,7 @@ export async function searchSupplierInvoices(
         { supplier: { name: q } },
       ],
     },
-    include: { supplier: true },
+    include: { supplier: { select: { name: true } } },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
@@ -362,7 +346,7 @@ export async function searchAccountingEntries(
         { journal: { name: q } },
       ],
     },
-    include: { journal: true },
+    include: { journal: { select: { code: true, name: true } } },
     take: limit,
     orderBy: { entryDate: "desc" },
   });
@@ -588,12 +572,18 @@ export async function globalSearch(
 
   const allResults: SearchResult[] = [...actionResults];
   const term = buildPrismaContains(query);
+  const searchTasks: Promise<void>[] = [];
 
   for (const type of typesToSearch) {
     if (!canSearchEntityType(user, type, enabledModules)) continue;
-    const rows = await searchByType(type, organizationId, term, limitPerGroup);
-    allResults.push(...rows);
+    searchTasks.push(
+      searchByType(type, organizationId, term, limitPerGroup).then((rows) => {
+        allResults.push(...rows);
+      }),
+    );
   }
+
+  await Promise.all(searchTasks);
 
   const ranked = applyRanking(allResults, query, favoriteKeys).slice(0, globalLimit);
   const groups: SearchResultGroup[] = [];

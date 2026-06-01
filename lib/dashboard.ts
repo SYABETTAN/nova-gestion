@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import type { DashboardData, DateRange } from "@/lib/dashboard-types";
 import {
   computeOverdueBuckets,
@@ -12,10 +12,15 @@ import {
   safeDivide,
   sumBy,
 } from "@/lib/dashboard-calculations";
-import { buildDashboardAlerts, HIGH_OUTSTANDING_THRESHOLD } from "@/lib/dashboard-alerts";
-import { isDateInRange } from "@/lib/dashboard-periods";
+import { buildDashboardAlerts } from "@/lib/dashboard-alerts";
 import { isPositive, money, moneyAdd, moneySub, moneyToNumber } from "@/lib/money";
 import { roundMoney } from "@/lib/pricing";
+import { prisma } from "@/lib/prisma";
+import {
+  fetchDashboardEntities,
+  filterBillablePeriodInvoices,
+  mapHighOutstanding,
+} from "@/lib/dashboard-fetch";
 
 const QUOTE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Brouillon",
@@ -46,89 +51,28 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 const now = () => new Date();
 
-export async function getDashboardData(
+async function buildDashboardDataUncached(
   organizationId: string,
   period: DateRange,
+  today: Date,
 ): Promise<DashboardData> {
-  const today = now();
+  const fetched = await fetchDashboardEntities(organizationId, period, today);
 
-  const [
-    customers,
-    quotes,
-    invoices,
-    payments,
-    reminders,
-    suppliers,
-    supplierInvoices,
-    items,
-    accountingEntries,
-    auditLogs,
-  ] = await Promise.all([
-    prisma.customer.findMany({ where: { organizationId, isArchived: false } }),
-    prisma.quote.findMany({
-      where: { organizationId, isArchived: false },
-      include: { customer: { select: { name: true } } },
-    }),
-    prisma.invoice.findMany({
-      where: { organizationId, isArchived: false },
-      include: {
-        customer: { select: { id: true, name: true } },
-        lines: { where: { lineType: { in: ["ITEM", "SERVICE"] } }, include: { item: true } },
-      },
-    }),
-    prisma.payment.findMany({
-      where: { organizationId, status: { not: "CANCELLED" } },
-      include: { customer: { select: { name: true } } },
-      orderBy: { paymentDate: "desc" },
-    }),
-    prisma.reminder.findMany({
-      where: { organizationId },
-      include: { customer: { select: { name: true } } },
-    }),
-    prisma.supplier.findMany({ where: { organizationId, isArchived: false } }),
-    prisma.supplierInvoice.findMany({
-      where: { organizationId, isArchived: false, status: { not: "CANCELLED" } },
-      include: {
-        supplier: { select: { id: true, name: true } },
-        expenseCategory: { select: { name: true } },
-      },
-    }),
-    prisma.item.findMany({ where: { organizationId, isArchived: false, status: "ACTIVE" } }),
-    prisma.accountingEntry.findMany({
-      where: { organizationId, status: { not: "CANCELLED" } },
-      include: { journal: true },
-    }),
-    prisma.auditLog.findMany({
-      where: { organizationId },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      include: { user: { select: { name: true } } },
-    }),
-  ]);
+  const {
+    periodQuotes,
+    periodInvoices,
+    billableInvoices,
+    overdueInvoices,
+    periodPayments,
+    periodSupplierInvoices,
+    periodAccountingEntries,
+    invoiceLinesForTopItems,
+    quoteLinesFallback,
+  } = fetched;
 
-  const periodQuotes = quotes.filter((q) => isDateInRange(q.createdAt, period.startDate, period.endDate));
-  const periodInvoices = invoices.filter((i) =>
-    isDateInRange(i.issueDate, period.startDate, period.endDate),
-  );
-  const billableInvoices = invoices.filter((i) => isInvoiceBillable(i.status));
-  const periodPayments = payments.filter((p) =>
-    isDateInRange(p.paymentDate, period.startDate, period.endDate),
-  );
-  const periodSupplierInvoices = supplierInvoices.filter((si) =>
-    isDateInRange(si.issueDate, period.startDate, period.endDate),
-  );
-  const periodEntries = accountingEntries.filter((e) =>
-    isDateInRange(e.entryDate, period.startDate, period.endDate),
-  );
+  const periodBillableInvoices = filterBillablePeriodInvoices(periodInvoices);
 
-  const overdueInvoices = invoices.filter((i) =>
-    isInvoiceOverdue(i.dueDate, i.amountDue, i.status, today),
-  );
-
-  const invoicedRevenue = sumBy(
-    periodInvoices.filter((i) => isInvoiceBillable(i.status)),
-    (i) => i.totalExcludingTax,
-  );
+  const invoicedRevenue = sumBy(periodBillableInvoices, (i) => i.totalExcludingTax);
   const cashCollected = sumBy(periodPayments, (p) => p.amount);
   const amountToCollect = sumBy(
     billableInvoices.filter((i) => isPositive(i.amountDue)),
@@ -156,10 +100,7 @@ export async function getDashboardData(
     _sum: { debit: true },
   });
   const vatCollected = roundMoney(
-    money(vatCollectedAgg._sum.credit ?? sumBy(
-      periodInvoices.filter((i) => isInvoiceBillable(i.status)),
-      (i) => i.totalVatAmount,
-    )),
+    money(vatCollectedAgg._sum.credit ?? sumBy(periodBillableInvoices, (i) => i.totalVatAmount)),
   );
   const vatDeductible = roundMoney(
     money(vatDeductibleAgg._sum.debit ?? sumBy(periodSupplierInvoices, (si) => si.totalVatAmount)),
@@ -172,8 +113,7 @@ export async function getDashboardData(
   const quotesAccepted = periodQuotes.filter((q) => ["ACCEPTED", "CONVERTED"].includes(q.status));
 
   const customerRevenueMap = new Map<string, { id: string; name: string; amount: number }>();
-  for (const inv of billableInvoices) {
-    if (!isDateInRange(inv.issueDate, period.startDate, period.endDate)) continue;
+  for (const inv of periodBillableInvoices) {
     const existing = customerRevenueMap.get(inv.customerId) ?? {
       id: inv.customer.id,
       name: inv.customer.name,
@@ -184,37 +124,17 @@ export async function getDashboardData(
   }
 
   const itemRevenueMap = new Map<string, { id: string; name: string; amount: number }>();
-  for (const inv of billableInvoices) {
-    for (const line of inv.lines) {
-      const key = line.itemId ?? line.name;
-      const existing = itemRevenueMap.get(key) ?? {
-        id: line.itemId ?? key,
-        name: line.item?.name ?? line.name,
-        amount: 0,
-      };
-      existing.amount = roundMoney(moneyAdd(existing.amount, line.totalExcludingTax));
-      itemRevenueMap.set(key, existing);
-    }
-  }
-  if (itemRevenueMap.size === 0) {
-    const quoteLines = await prisma.quoteLine.findMany({
-      where: {
-        organizationId,
-        lineType: { in: ["ITEM", "SERVICE"] },
-        quote: { createdAt: { gte: period.startDate, lte: period.endDate } },
-      },
-      include: { item: true },
-    });
-    for (const line of quoteLines) {
-      const key = line.itemId ?? line.name;
-      const existing = itemRevenueMap.get(key) ?? {
-        id: line.itemId ?? key,
-        name: line.item?.name ?? line.name,
-        amount: 0,
-      };
-      existing.amount = roundMoney(moneyAdd(existing.amount, line.totalExcludingTax));
-      itemRevenueMap.set(key, existing);
-    }
+  const lineSource =
+    invoiceLinesForTopItems.length > 0 ? invoiceLinesForTopItems : quoteLinesFallback;
+  for (const line of lineSource) {
+    const key = line.itemId ?? line.name;
+    const existing = itemRevenueMap.get(key) ?? {
+      id: line.itemId ?? key,
+      name: line.item?.name ?? line.name,
+      amount: 0,
+    };
+    existing.amount = roundMoney(moneyAdd(existing.amount, line.totalExcludingTax));
+    itemRevenueMap.set(key, existing);
   }
 
   const supplierMap = new Map<string, { id: string; name: string; amount: number }>();
@@ -246,12 +166,9 @@ export async function getDashboardData(
   }
 
   const journalMap = new Map<string, number>();
-  for (const e of periodEntries) {
+  for (const e of periodAccountingEntries) {
     journalMap.set(e.journal.code, (journalMap.get(e.journal.code) ?? 0) + 1);
   }
-
-  const in7days = new Date(today);
-  in7days.setDate(in7days.getDate() + 7);
 
   const alerts = buildDashboardAlerts({
     overdueInvoices: overdueInvoices.map((i) => ({
@@ -260,43 +177,30 @@ export async function getDashboardData(
       daysOverdue: daysBetween(i.dueDate, today),
       amountDue: moneyToNumber(i.amountDue),
     })),
-    customersHighOutstanding: customers
-      .filter((c) => isPositive(c.outstandingAmount) && moneyToNumber(c.outstandingAmount) >= HIGH_OUTSTANDING_THRESHOLD)
-      .map((c) => ({ id: c.id, name: c.name, outstandingAmount: moneyToNumber(c.outstandingAmount) })),
-    expiringQuotes: quotes.filter(
-      (q) =>
-        ["SENT", "VIEWED"].includes(q.status) &&
-        q.validUntil >= today &&
-        q.validUntil <= in7days,
-    ).map((q) => ({ id: q.id, quoteNumber: q.quoteNumber, validUntil: q.validUntil })),
-    dueSoonSupplierInvoices: supplierInvoices.filter(
-      (si) => isPositive(si.amountDue) && si.dueDate >= today && si.dueDate <= in7days,
-    ).map((si) => ({
+    customersHighOutstanding: mapHighOutstanding(fetched.customersHighOutstanding),
+    expiringQuotes: fetched.expiringQuotes,
+    dueSoonSupplierInvoices: fetched.dueSoonSupplierInvoices.map((si) => ({
       id: si.id,
       supplierInvoiceNumber: si.supplierInvoiceNumber,
       dueDate: si.dueDate,
       amountDue: moneyToNumber(si.amountDue),
     })),
-    negativeMarginItems: items
-      .filter((i) => moneyToNumber(i.marginAmount) < 0)
-      .map((i) => ({ id: i.id, name: i.name, marginAmount: moneyToNumber(i.marginAmount) })),
-    unbalancedEntries: accountingEntries
-      .filter((e) => e.status === "DRAFT" && !e.isBalanced)
-      .map((e) => ({ id: e.id, entryNumber: e.entryNumber })),
+    negativeMarginItems: fetched.negativeMarginItems.map((i) => ({
+      id: i.id,
+      name: i.name,
+      marginAmount: moneyToNumber(i.marginAmount),
+    })),
+    unbalancedEntries: fetched.unbalancedDraftEntries,
     netVat,
-    disputedInvoices: invoices
-      .filter((i) => i.isDisputed)
-      .map((i) => ({ id: i.id, invoiceNumber: i.invoiceNumber })),
-    unallocatedPayments: payments
-      .filter((p) => isPositive(p.unallocatedAmount))
-      .map((p) => ({
-        id: p.id,
-        paymentNumber: p.paymentNumber,
-        unallocatedAmount: moneyToNumber(p.unallocatedAmount),
-      })),
+    disputedInvoices: fetched.disputedInvoices,
+    unallocatedPayments: fetched.unallocatedPayments.map((p) => ({
+      id: p.id,
+      paymentNumber: p.paymentNumber,
+      unallocatedAmount: moneyToNumber(p.unallocatedAmount),
+    })),
   });
 
-  const recentActivity = auditLogs.slice(0, 15).map((log) => ({
+  const recentActivity = fetched.auditLogs.slice(0, 15).map((log) => ({
     id: log.id,
     date: log.createdAt,
     type: log.action,
@@ -305,6 +209,15 @@ export async function getDashboardData(
     userName: log.user?.name,
     href: entityHref(log.entityType, log.entityLabel),
   }));
+
+  const paidCount = billableInvoices.filter(
+    (i) => i.paymentStatus === "PAID" || i.status === "PAID",
+  ).length;
+
+  const globalGap = Math.abs(
+    moneyToNumber(fetched.accountingTotals._sum.totalDebit ?? 0) -
+      moneyToNumber(fetched.accountingTotals._sum.totalCredit ?? 0),
+  );
 
   return {
     period,
@@ -317,11 +230,9 @@ export async function getDashboardData(
       netVatIndicative: netVat,
     },
     commercial: {
-      activeCustomers: customers.filter((c) => c.status === "ACTIVE").length,
-      newCustomers: customers.filter((c) =>
-        isDateInRange(c.createdAt, period.startDate, period.endDate),
-      ).length,
-      prospects: customers.filter((c) => c.status === "PROSPECT").length,
+      activeCustomers: fetched.activeCustomersCount,
+      newCustomers: fetched.newCustomersCount,
+      prospects: fetched.prospectsCount,
       quotesCount: periodQuotes.length,
       quotesTotal: sumBy(periodQuotes, (q) => q.totalIncludingTax),
       quotesAccepted: quotesAccepted.length,
@@ -340,33 +251,22 @@ export async function getDashboardData(
     },
     invoices: {
       revenueExcludingTax: invoicedRevenue,
-      totalVat: sumBy(
-        periodInvoices.filter((i) => isInvoiceBillable(i.status)),
-        (i) => i.totalVatAmount,
-      ),
-      totalIncludingTax: sumBy(
-        periodInvoices.filter((i) => isInvoiceBillable(i.status)),
-        (i) => i.totalIncludingTax,
-      ),
+      totalVat: sumBy(periodBillableInvoices, (i) => i.totalVatAmount),
+      totalIncludingTax: sumBy(periodBillableInvoices, (i) => i.totalIncludingTax),
       invoiceCount: periodInvoices.length,
       draftCount: periodInvoices.filter((i) => i.status === "DRAFT").length,
       validatedCount: periodInvoices.filter((i) =>
         ["VALIDATED", "SENT", "PAID", "PARTIALLY_PAID", "OVERDUE"].includes(i.status),
       ).length,
-      paidCount: invoices.filter((i) => i.paymentStatus === "PAID" || i.status === "PAID").length,
+      paidCount,
       overdueCount: overdueInvoices.length,
       amountToCollect,
       averageInvoiceValue: safeDivide(
-        sumBy(
-          periodInvoices.filter((i) => isInvoiceBillable(i.status)),
-          (i) => i.totalIncludingTax,
-        ),
-        periodInvoices.filter((i) => isInvoiceBillable(i.status)).length,
+        sumBy(periodBillableInvoices, (i) => i.totalIncludingTax),
+        periodBillableInvoices.length,
       ),
       revenueMonthly: groupByMonth(
-        periodInvoices
-          .filter((i) => isInvoiceBillable(i.status))
-          .map((i) => ({ date: i.issueDate, amount: i.totalExcludingTax })),
+        periodBillableInvoices.map((i) => ({ date: i.issueDate, amount: i.totalExcludingTax })),
         period,
       ),
       paymentStatusBreakdown: groupByStatusAmount(
@@ -379,21 +279,22 @@ export async function getDashboardData(
     payments: {
       collectedAmount: cashCollected,
       paymentCount: periodPayments.length,
-      allocatedAmount: sumBy(payments, (p) => p.allocatedAmount),
-      unallocatedAmount: sumBy(payments, (p) => p.unallocatedAmount),
+      allocatedAmount: moneyToNumber(fetched.paymentSums._sum.allocatedAmount ?? 0),
+      unallocatedAmount: moneyToNumber(fetched.paymentSums._sum.unallocatedAmount ?? 0),
       averagePayment: safeDivide(cashCollected, periodPayments.length),
-      settledInvoices: invoices.filter(
+      settledInvoices: billableInvoices.filter(
         (i) =>
           (i.paymentStatus === "PAID" || i.status === "PAID") &&
           i.paidAt &&
-          isDateInRange(i.paidAt, period.startDate, period.endDate),
+          i.paidAt >= period.startDate &&
+          i.paidAt <= period.endDate,
       ).length,
       byMethod: groupByStatusAmount(periodPayments, "method", "amount", PAYMENT_METHOD_LABELS),
       cashInMonthly: groupByMonth(
         periodPayments.map((p) => ({ date: p.paymentDate, amount: p.amount })),
         period,
       ),
-      recentPayments: payments.slice(0, 5).map((p) => ({
+      recentPayments: fetched.recentPayments.map((p) => ({
         id: p.id,
         number: p.paymentNumber,
         customerName: p.customer.name,
@@ -410,13 +311,10 @@ export async function getDashboardData(
               sumBy(overdueInvoices, (i) => daysBetween(i.dueDate, today)) / overdueInvoices.length,
             )
           : 0,
-      remindersSent: reminders.filter((r) => {
-        const sentAt = r.sentAt ?? r.simulatedSentAt;
-        return sentAt && isDateInRange(sentAt, period.startDate, period.endDate);
-      }).length,
-      disputedCount: invoices.filter((i) => i.isDisputed).length,
-      pausedCount: invoices.filter((i) => i.isCollectionPaused).length,
-      promisedCount: invoices.filter((i) => i.promisedPaymentDate).length,
+      remindersSent: fetched.remindersSentCount,
+      disputedCount: fetched.disputedCount,
+      pausedCount: fetched.pausedCount,
+      promisedCount: fetched.promisedCount,
       topOverdueCustomers: getTopByAmount([...overdueCustomerMap.values()]),
       overdueBuckets: computeOverdueBuckets(
         overdueInvoices.map((i) => ({
@@ -426,16 +324,16 @@ export async function getDashboardData(
       ),
     },
     suppliers: {
-      activeSuppliers: suppliers.filter((s) => s.status === "ACTIVE").length,
-      preferredSuppliers: suppliers.filter((s) => s.isPreferred).length,
-      highRiskSuppliers: suppliers.filter((s) => s.riskLevel === "HIGH").length,
+      activeSuppliers: fetched.activeSuppliersCount,
+      preferredSuppliers: fetched.preferredSuppliersCount,
+      highRiskSuppliers: fetched.highRiskSuppliersCount,
       expensesAmount: supplierExpenses,
       amountToPay: sumBy(
-        supplierInvoices.filter((si) => isPositive(si.amountDue)),
+        fetched.openSupplierInvoices.filter((si) => isPositive(si.amountDue)),
         (si) => si.amountDue,
       ),
-      overdueSupplierInvoices: supplierInvoices.filter(
-        (si) => isPositive(si.amountDue) && isInvoiceOverdue(si.dueDate, si.amountDue, "VALIDATED", today),
+      overdueSupplierInvoices: fetched.openSupplierInvoices.filter((si) =>
+        isInvoiceOverdue(si.dueDate, si.amountDue, si.status, today),
       ).length,
       expensesByCategory: [...categoryMap.entries()].map(([name, value]) => ({
         key: name,
@@ -452,16 +350,13 @@ export async function getDashboardData(
       ),
     },
     accounting: {
-      entryCount: periodEntries.length,
-      draftCount: periodEntries.filter((e) => e.status === "DRAFT").length,
-      validatedCount: periodEntries.filter((e) => e.status === "VALIDATED").length,
-      unbalancedCount: accountingEntries.filter((e) => e.status === "DRAFT" && !e.isBalanced)
-        .length,
-      totalDebit: sumBy(periodEntries, (e) => e.totalDebit),
-      totalCredit: sumBy(periodEntries, (e) => e.totalCredit),
-      globalGap: Math.abs(
-        sumBy(accountingEntries, (e) => e.totalDebit) - sumBy(accountingEntries, (e) => e.totalCredit),
-      ),
+      entryCount: periodAccountingEntries.length,
+      draftCount: periodAccountingEntries.filter((e) => e.status === "DRAFT").length,
+      validatedCount: periodAccountingEntries.filter((e) => e.status === "VALIDATED").length,
+      unbalancedCount: fetched.unbalancedDraftEntries.length,
+      totalDebit: sumBy(periodAccountingEntries, (e) => e.totalDebit),
+      totalCredit: sumBy(periodAccountingEntries, (e) => e.totalCredit),
+      globalGap,
       vatCollected,
       vatDeductible,
       netVat,
@@ -474,6 +369,27 @@ export async function getDashboardData(
     alerts,
     recentActivity,
   };
+}
+
+export async function getDashboardData(
+  organizationId: string,
+  period: DateRange,
+): Promise<DashboardData> {
+  const today = now();
+  const cacheKey = [
+    "dashboard",
+    organizationId,
+    period.startDate.toISOString(),
+    period.endDate.toISOString(),
+  ];
+
+  const cached = unstable_cache(
+    () => buildDashboardDataUncached(organizationId, period, today),
+    cacheKey,
+    { revalidate: 60, tags: [`dashboard-${organizationId}`] },
+  );
+
+  return cached();
 }
 
 function entityHref(entityType: string | null, entityLabel: string | null): string | undefined {

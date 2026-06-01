@@ -122,10 +122,54 @@ export async function getQuoteByIdQuery(organizationId: string, id: string) {
 }
 
 export async function getQuoteStatsQuery(organizationId: string) {
-  return prisma.quote.findMany({
-    where: { organizationId },
-    select: { status: true, totalIncludingTax: true, isArchived: true },
-  });
+  const base = { organizationId, isArchived: false };
+  const { moneyToNumber } = await import("@/lib/money");
+
+  const [
+    total,
+    drafts,
+    sent,
+    accepted,
+    expired,
+    acceptedAmountAgg,
+    pendingAmountAgg,
+    sentCount,
+    decidedCount,
+  ] = await Promise.all([
+    prisma.quote.count({ where: base }),
+    prisma.quote.count({ where: { ...base, status: "DRAFT" } }),
+    prisma.quote.count({ where: { ...base, status: { in: ["SENT", "VIEWED"] } } }),
+    prisma.quote.count({ where: { ...base, status: "ACCEPTED" } }),
+    prisma.quote.count({ where: { ...base, status: "EXPIRED" } }),
+    prisma.quote.aggregate({
+      where: { ...base, status: { in: ["ACCEPTED", "CONVERTED"] } },
+      _sum: { totalIncludingTax: true },
+    }),
+    prisma.quote.aggregate({
+      where: { ...base, status: { in: ["SENT", "VIEWED"] } },
+      _sum: { totalIncludingTax: true },
+    }),
+    prisma.quote.count({ where: { ...base, status: { in: ["SENT", "VIEWED"] } } }),
+    prisma.quote.count({
+      where: { ...base, status: { in: ["ACCEPTED", "REFUSED", "EXPIRED", "CONVERTED"] } },
+    }),
+  ]);
+
+  const acceptedAmount = moneyToNumber(acceptedAmountAgg._sum.totalIncludingTax ?? 0);
+  const pendingAmount = moneyToNumber(pendingAmountAgg._sum.totalIncludingTax ?? 0);
+
+  return {
+    total,
+    drafts,
+    sent,
+    accepted,
+    expired,
+    acceptedAmount,
+    pendingAmount,
+    acceptanceRate: decidedCount > 0 ? Math.round((accepted / decidedCount) * 100) : 0,
+    averageBasket: accepted > 0 ? acceptedAmount / accepted : 0,
+    sentCount,
+  };
 }
 
 export async function getQuotesForExportQuery(

@@ -15,7 +15,7 @@ import {
   OverdueBucketsChart,
   RevenueChart,
   StatusPieChart,
-} from "@/components/dashboard/dashboard-charts";
+} from "@/components/dashboard/dashboard-charts-lazy";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { TopListTable } from "@/components/dashboard/top-list-table";

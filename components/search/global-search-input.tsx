@@ -1,11 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GlobalCommandPalette } from "@/components/search/global-command-palette";
 import { useGlobalSearchShortcut } from "@/hooks/use-global-search-shortcut";
 import type { SessionUser } from "@/lib/permissions";
+
+const GlobalCommandPalette = dynamic(
+  () =>
+    import("@/components/search/global-command-palette").then((m) => m.GlobalCommandPalette),
+  { ssr: false, loading: () => null },
+);
 
 function shortcutLabel() {
   if (typeof navigator !== "undefined" && /Mac/i.test(navigator.platform)) {
@@ -47,7 +53,14 @@ export function GlobalSearchInput({ user }: { user: SessionUser }) {
       >
         <Search className="h-4 w-4" />
       </Button>
-      <GlobalCommandPalette open={open} onOpenChange={setOpen} user={user} initialQuery={seedQuery} />
+      {open ? (
+        <GlobalCommandPalette
+          open={open}
+          onOpenChange={setOpen}
+          user={user}
+          initialQuery={seedQuery}
+        />
+      ) : null}
     </>
   );
 }
