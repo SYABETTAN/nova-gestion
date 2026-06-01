@@ -160,8 +160,10 @@ prisma generate && prisma migrate deploy && next build
 
 | Problème | Solution |
 |----------|----------|
+| Email « not a member of the team » | L’email Git du commit (`git log -1 --format=%ae`) doit correspondre à votre compte Vercel/GitHub. Dans ce repo : `203708253+SYABETTAN@users.noreply.github.com`. Ou ajoutez `samuelabettan@Mac.lan` dans [vercel.com/account](https://vercel.com/account). |
 | Build échoue Prisma | Vérifier `DATABASE_URL` présente au build |
 | 500 au login | `SESSION_SECRET` ≥ 32 caractères |
 | Email ne part pas | `RESEND_API_KEY` + `EMAIL_FROM` vérifiés |
 | Redirect loop | `NEXT_PUBLIC_APP_URL` = URL Vercel exacte |
 | Upload/PDF perdus | Passer à R2 (`STORAGE_PROVIDER=s3`) |
+| Déploiement GitHub bloqué | Repo public + email GitHub sur les commits (voir ci-dessus) |
