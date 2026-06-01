@@ -36,6 +36,7 @@ jobs:
       EMAIL_PROVIDER: mock
       STORAGE_PROVIDER: local
       STORAGE_PATH: /tmp/esther-uploads-ci
+      SEED_DEV_DATA: "false"
 
     steps:
       - uses: actions/checkout@v4

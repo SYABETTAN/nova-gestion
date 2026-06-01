@@ -23,7 +23,9 @@ describe("session v2", () => {
   it("refuse une signature invalide", () => {
     vi.stubEnv("SESSION_SECRET", "test-session-secret-32-chars-min!!");
     const value = createSignedSessionValue("user-abc");
-    const tampered = `${value.slice(0, -1)}0`;
+    const last = value[value.length - 1]!;
+    const flipped = last === "a" ? "b" : "a";
+    const tampered = `${value.slice(0, -1)}${flipped}`;
     const result = validateSessionCookie(tampered);
     expect(result.valid).toBe(false);
     if (!result.valid) expect(result.reason).toBe("invalid_signature");
