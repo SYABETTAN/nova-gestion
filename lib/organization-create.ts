@@ -54,37 +54,40 @@ export async function createOrganizationWithOwner(
   const slug = await uniqueOrgSlug(name);
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const { user, organizationId } = await prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.create({
-      data: {
-        name,
-        legalName: name,
-        slug,
-        email: normalizedEmail,
-        country: "FR",
-      },
-    });
+  const { user, organizationId } = await prisma.$transaction(
+    async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name,
+          legalName: name,
+          slug,
+          email: normalizedEmail,
+          country: "FR",
+        },
+      });
 
-    const created = await tx.user.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        passwordHash,
-        memberships: {
-          create: {
-            organizationId: organization.id,
-            roleId: ownerRole.id,
-            status: "ACTIVE",
-            joinedAt: new Date(),
+      const created = await tx.user.create({
+        data: {
+          name,
+          email: normalizedEmail,
+          passwordHash,
+          memberships: {
+            create: {
+              organizationId: organization.id,
+              roleId: ownerRole.id,
+              status: "ACTIVE",
+              joinedAt: new Date(),
+            },
           },
         },
-      },
-    });
+      });
 
-    await bootstrapOrganization(tx, organization.id);
+      await bootstrapOrganization(tx, organization.id);
 
-    return { user: created, organizationId: organization.id };
-  });
+      return { user: created, organizationId: organization.id };
+    },
+    { maxWait: 60_000, timeout: 120_000 },
+  );
 
   await createAuditLog({
     organizationId,
