@@ -3,6 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { RecentActivityItem } from "@/lib/dashboard-types";
 
+function formatActivityDate(value: Date | string): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
   return (
     <Card>
@@ -20,12 +31,7 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-[var(--color-muted-foreground)]">
-                        {new Intl.DateTimeFormat("fr-FR", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(item.date))}
+                        {formatActivityDate(item.date)}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         {item.type}

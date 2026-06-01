@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import type { DashboardData, DateRange } from "@/lib/dashboard-types";
 import {
   computeOverdueBuckets,
@@ -375,21 +374,7 @@ export async function getDashboardData(
   organizationId: string,
   period: DateRange,
 ): Promise<DashboardData> {
-  const today = now();
-  const cacheKey = [
-    "dashboard",
-    organizationId,
-    period.startDate.toISOString(),
-    period.endDate.toISOString(),
-  ];
-
-  const cached = unstable_cache(
-    () => buildDashboardDataUncached(organizationId, period, today),
-    cacheKey,
-    { revalidate: 60, tags: [`dashboard-${organizationId}`] },
-  );
-
-  return cached();
+  return buildDashboardDataUncached(organizationId, period, now());
 }
 
 function entityHref(entityType: string | null, entityLabel: string | null): string | undefined {

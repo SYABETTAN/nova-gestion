@@ -88,16 +88,22 @@ export function isDateInRange(date: Date, startDate: Date, endDate: Date): boole
 
 export function formatPeriodLabel(range: DateRange): string {
   const fmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-  const labels: Record<DashboardPeriodPreset, string> = {
-    THIS_MONTH: "Ce mois",
-    LAST_MONTH: "Mois précédent",
-    THIS_QUARTER: "Ce trimestre",
-    LAST_QUARTER: "Trimestre précédent",
-    THIS_YEAR: "Cette année",
-    LAST_12_MONTHS: "12 derniers mois",
-    CUSTOM: `${fmt.format(range.startDate)} — ${fmt.format(range.endDate)}`,
-  };
-  return labels[range.preset] ?? labels.CUSTOM;
+  const preset = range.preset ?? "THIS_MONTH";
+
+  if (preset !== "CUSTOM") {
+    return PERIOD_PRESET_LABELS[preset] ?? PERIOD_PRESET_LABELS.THIS_MONTH;
+  }
+
+  const start = toDate(range.startDate);
+  const end = toDate(range.endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return PERIOD_PRESET_LABELS.THIS_MONTH;
+  }
+  return `${fmt.format(start)} — ${fmt.format(end)}`;
+}
+
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
 }
 
 export function getPreviousPeriodRange(range: DateRange): DateRange {
