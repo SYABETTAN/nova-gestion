@@ -1,0 +1,39 @@
+# Applique les migrations sur staging ou production via workflow manuel.
+# Configurez les secrets GitHub : DATABASE_URL_STAGING, DATABASE_URL_PRODUCTION
+
+name: Deploy migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ inputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}
+
+      - name: Migration status
+        run: npx prisma migrate status
+        env:
+          DATABASE_URL: ${{ inputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}

@@ -1,0 +1,2854 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateEnum
+CREATE TYPE "MemberStatus" AS ENUM ('ACTIVE', 'INVITED', 'SUSPENDED');
+
+-- CreateEnum
+CREATE TYPE "SystemRole" AS ENUM ('OWNER', 'ADMIN', 'ACCOUNTANT', 'SALES', 'READ_ONLY');
+
+-- CreateEnum
+CREATE TYPE "PermissionKey" AS ENUM ('ORGANIZATION_READ', 'ORGANIZATION_UPDATE', 'MEMBERS_READ', 'MEMBERS_INVITE', 'MEMBERS_UPDATE', 'MEMBERS_SUSPEND', 'SETTINGS_READ', 'SETTINGS_UPDATE', 'NUMBERING_READ', 'NUMBERING_UPDATE', 'AUDIT_LOG_READ', 'CUSTOMERS_READ', 'CUSTOMERS_CREATE', 'CUSTOMERS_UPDATE', 'CUSTOMERS_DELETE', 'ITEMS_READ', 'ITEMS_CREATE', 'ITEMS_UPDATE', 'ITEMS_DELETE', 'QUOTES_READ', 'QUOTES_CREATE', 'QUOTES_UPDATE', 'QUOTES_VALIDATE', 'QUOTES_DELETE', 'INVOICES_READ', 'INVOICES_CREATE', 'INVOICES_UPDATE', 'INVOICES_VALIDATE', 'INVOICES_CANCEL', 'PAYMENTS_READ', 'PAYMENTS_CREATE', 'PAYMENTS_UPDATE', 'PAYMENTS_CANCEL', 'PAYMENTS_EXPORT', 'REMINDERS_READ', 'REMINDERS_CREATE', 'REMINDERS_UPDATE', 'REMINDERS_SEND', 'REMINDERS_CANCEL', 'REMINDERS_EXPORT', 'REMINDER_TEMPLATES_READ', 'REMINDER_TEMPLATES_UPDATE', 'SUPPLIERS_READ', 'SUPPLIERS_CREATE', 'SUPPLIERS_UPDATE', 'SUPPLIERS_DELETE', 'SUPPLIERS_EXPORT', 'SUPPLIERS_BANK_DETAILS_UPDATE', 'SUPPLIER_INVOICES_READ', 'SUPPLIER_INVOICES_CREATE', 'SUPPLIER_INVOICES_UPDATE', 'SUPPLIER_INVOICES_VALIDATE', 'SUPPLIER_INVOICES_CANCEL', 'SUPPLIER_INVOICES_EXPORT', 'ACCOUNTING_READ', 'ACCOUNTING_EXPORT', 'ACCOUNTING_CREATE', 'ACCOUNTING_UPDATE', 'ACCOUNTING_VALIDATE', 'ACCOUNTING_CANCEL', 'ACCOUNTING_SETTINGS_UPDATE', 'DASHBOARD_READ', 'DASHBOARD_EXPORT', 'EXPORTS_READ', 'EXPORTS_CREATE', 'EXPORTS_DOWNLOAD', 'DOCUMENTS_READ', 'DOCUMENTS_CREATE', 'DOCUMENTS_ARCHIVE', 'DOCUMENT_TEMPLATES_READ', 'DOCUMENT_TEMPLATES_UPDATE', 'ADVANCED_SETTINGS_READ', 'ADVANCED_SETTINGS_UPDATE', 'GLOBAL_SEARCH_USE', 'SEARCH_HISTORY_READ', 'SEARCH_HISTORY_CLEAR', 'FAVORITES_READ', 'FAVORITES_UPDATE');
+
+-- CreateEnum
+CREATE TYPE "NumberingSequenceType" AS ENUM ('CUSTOMER', 'SUPPLIER', 'ITEM', 'QUOTE', 'INVOICE', 'CREDIT_NOTE', 'PAYMENT', 'REMINDER', 'SUPPLIER_INVOICE', 'ACCOUNTING_ENTRY');
+
+-- CreateEnum
+CREATE TYPE "NumberingResetPeriod" AS ENUM ('NEVER', 'YEARLY', 'MONTHLY');
+
+-- CreateEnum
+CREATE TYPE "AuditAction" AS ENUM ('DEMO_LOGIN', 'DEMO_LOGOUT', 'USER_LOGIN', 'USER_LOGOUT', 'ORGANIZATION_CREATED', 'ORGANIZATION_UPDATED', 'MEMBER_INVITED', 'MEMBER_ROLE_UPDATED', 'MEMBER_SUSPENDED', 'MEMBER_REACTIVATED', 'SETTINGS_UPDATED', 'NUMBERING_UPDATED', 'NUMBER_GENERATED', 'CUSTOMER_CREATED', 'CUSTOMER_UPDATED', 'CUSTOMER_ARCHIVED', 'CUSTOMER_REACTIVATED', 'CUSTOMER_CONTACT_CREATED', 'CUSTOMER_CONTACT_UPDATED', 'CUSTOMER_CONTACT_DELETED', 'CUSTOMER_ADDRESS_CREATED', 'CUSTOMER_ADDRESS_UPDATED', 'CUSTOMER_ADDRESS_DELETED', 'CUSTOMER_NOTE_CREATED', 'CUSTOMER_TAG_ASSIGNED', 'CUSTOMER_TAG_REMOVED', 'CUSTOMER_EXPORTED', 'ITEM_CREATED', 'ITEM_UPDATED', 'ITEM_ARCHIVED', 'ITEM_REACTIVATED', 'ITEM_PRICE_UPDATED', 'ITEM_TAG_ASSIGNED', 'ITEM_TAG_REMOVED', 'ITEM_CATEGORY_CREATED', 'ITEM_EXPORTED', 'QUOTE_CREATED', 'QUOTE_UPDATED', 'QUOTE_SENT', 'QUOTE_VIEWED', 'QUOTE_ACCEPTED', 'QUOTE_REFUSED', 'QUOTE_EXPIRED', 'QUOTE_CANCELLED', 'QUOTE_CONVERTED', 'QUOTE_ARCHIVED', 'QUOTE_REACTIVATED', 'QUOTE_DUPLICATED', 'QUOTE_PDF_GENERATED', 'QUOTE_EMAIL_SIMULATED', 'QUOTE_EXPORTED', 'INVOICE_CREATED', 'INVOICE_CREATED_FROM_QUOTE', 'INVOICE_UPDATED', 'INVOICE_VALIDATED', 'INVOICE_SENT', 'INVOICE_EMAIL_SIMULATED', 'INVOICE_PDF_GENERATED', 'INVOICE_MARKED_OVERDUE', 'INVOICE_MARKED_PAID_PLACEHOLDER', 'INVOICE_PARTIAL_PAYMENT_PLACEHOLDER', 'INVOICE_CANCELLED', 'INVOICE_CREDITED', 'INVOICE_ARCHIVED', 'INVOICE_REACTIVATED', 'INVOICE_DUPLICATED', 'INVOICE_EXPORTED', 'CREDIT_NOTE_CREATED', 'CREDIT_NOTE_CANCELLED', 'PAYMENT_CREATED', 'PAYMENT_UPDATED', 'PAYMENT_ALLOCATED', 'PAYMENT_DEALLOCATED', 'PAYMENT_CANCELLED', 'PAYMENT_RECEIPT_GENERATED', 'PAYMENT_RECEIPT_EMAIL_SIMULATED', 'PAYMENT_EXPORTED', 'INVOICE_PAYMENT_RECEIVED', 'INVOICE_PAYMENT_CANCELLED', 'CUSTOMER_OUTSTANDING_RECALCULATED', 'REMINDER_CREATED', 'REMINDER_UPDATED', 'REMINDER_EMAIL_SIMULATED', 'REMINDER_BULK_EMAIL_SIMULATED', 'REMINDER_CANCELLED', 'REMINDER_TEMPLATE_CREATED', 'REMINDER_TEMPLATE_UPDATED', 'REMINDER_TEMPLATE_DISABLED', 'REMINDER_NOTE_CREATED', 'REMINDER_EXPORTED', 'REMINDER_HISTORY_EXPORTED', 'COLLECTION_PAUSED', 'COLLECTION_RESUMED', 'INVOICE_DISPUTED', 'INVOICE_DISPUTE_RESOLVED', 'PROMISED_PAYMENT_DATE_SET', 'INVOICE_REMINDER_SENT', 'CUSTOMER_COLLECTION_NOTE_CREATED', 'SUPPLIER_CREATED', 'SUPPLIER_UPDATED', 'SUPPLIER_ARCHIVED', 'SUPPLIER_REACTIVATED', 'SUPPLIER_CONTACT_CREATED', 'SUPPLIER_CONTACT_UPDATED', 'SUPPLIER_CONTACT_DELETED', 'SUPPLIER_ADDRESS_CREATED', 'SUPPLIER_ADDRESS_UPDATED', 'SUPPLIER_ADDRESS_DELETED', 'SUPPLIER_BANK_ACCOUNT_CREATED', 'SUPPLIER_BANK_ACCOUNT_UPDATED', 'SUPPLIER_BANK_ACCOUNT_DISABLED', 'SUPPLIER_BANK_ACCOUNT_SET_DEFAULT', 'SUPPLIER_NOTE_CREATED', 'SUPPLIER_TAG_ASSIGNED', 'SUPPLIER_TAG_REMOVED', 'SUPPLIER_CATEGORY_CREATED', 'SUPPLIER_EXPORTED', 'SUPPLIER_INVOICE_CREATED', 'SUPPLIER_INVOICE_UPDATED', 'SUPPLIER_INVOICE_VALIDATED', 'SUPPLIER_INVOICE_CANCELLED', 'SUPPLIER_INVOICE_ARCHIVED', 'SUPPLIER_INVOICE_REACTIVATED', 'SUPPLIER_INVOICE_MARKED_PAID_PLACEHOLDER', 'SUPPLIER_INVOICE_PARTIAL_PAYMENT_PLACEHOLDER', 'SUPPLIER_INVOICE_MARKED_OVERDUE', 'SUPPLIER_INVOICE_ATTACHMENT_ADDED', 'SUPPLIER_INVOICE_ATTACHMENT_DELETED', 'SUPPLIER_INVOICE_NOTE_CREATED', 'SUPPLIER_INVOICE_EXPORTED', 'EXPENSE_CATEGORY_CREATED', 'ACCOUNTING_ACCOUNT_CREATED', 'ACCOUNTING_ACCOUNT_UPDATED', 'ACCOUNTING_ACCOUNT_DISABLED', 'ACCOUNTING_JOURNAL_CREATED', 'ACCOUNTING_JOURNAL_UPDATED', 'ACCOUNTING_ENTRY_CREATED', 'ACCOUNTING_ENTRY_UPDATED', 'ACCOUNTING_ENTRY_VALIDATED', 'ACCOUNTING_ENTRY_CANCELLED', 'ACCOUNTING_ENTRY_DUPLICATED', 'ACCOUNTING_ENTRY_GENERATED_FROM_CUSTOMER_INVOICE', 'ACCOUNTING_ENTRY_GENERATED_FROM_CUSTOMER_PAYMENT', 'ACCOUNTING_ENTRY_GENERATED_FROM_SUPPLIER_INVOICE', 'ACCOUNTING_MISSING_ENTRIES_GENERATED', 'ACCOUNTING_ENTRIES_EXPORTED', 'ACCOUNTING_LEDGER_EXPORTED', 'ACCOUNTING_TRIAL_BALANCE_EXPORTED', 'ACCOUNTING_VAT_SUMMARY_EXPORTED', 'DASHBOARD_EXPORTED', 'EXPORT_CREATED', 'EXPORT_COMPLETED', 'EXPORT_FAILED', 'EXPORT_DOWNLOADED', 'DOCUMENT_GENERATED', 'DOCUMENT_PRINTED_PLACEHOLDER', 'DOCUMENT_ARCHIVED', 'DOCUMENT_TEMPLATE_CREATED', 'DOCUMENT_TEMPLATE_UPDATED', 'DOCUMENT_TEMPLATE_DISABLED', 'FAKE_ATTACHMENT_CREATED', 'FAKE_ATTACHMENT_DELETED', 'TAX_RATE_CREATED', 'TAX_RATE_UPDATED', 'TAX_RATE_DISABLED', 'TAX_RATE_SET_DEFAULT', 'PAYMENT_TERM_CREATED', 'PAYMENT_TERM_UPDATED', 'PAYMENT_TERM_DISABLED', 'PAYMENT_TERM_SET_DEFAULT', 'CURRENCY_CREATED', 'CURRENCY_UPDATED', 'CURRENCY_DISABLED', 'CURRENCY_SET_DEFAULT', 'LOCALIZATION_SETTINGS_UPDATED', 'COMMERCIAL_PREFERENCES_UPDATED', 'INVOICING_PREFERENCES_UPDATED', 'SUPPLIER_PREFERENCES_UPDATED', 'ACCOUNTING_PREFERENCES_UPDATED', 'ACCOUNTING_MAPPING_CREATED', 'ACCOUNTING_MAPPING_UPDATED', 'ACCOUNTING_MAPPING_DISABLED', 'ACCOUNTING_MAPPING_SET_DEFAULT', 'NOTIFICATION_PREFERENCES_UPDATED', 'FEATURE_FLAG_UPDATED', 'CUSTOM_FIELD_CREATED', 'CUSTOM_FIELD_UPDATED', 'CUSTOM_FIELD_DISABLED', 'DATA_RESET_REQUESTED', 'GLOBAL_SEARCH_OPENED', 'GLOBAL_SEARCH_PERFORMED', 'SEARCH_RESULT_OPENED', 'SEARCH_HISTORY_CLEARED', 'FAVORITE_ENTITY_ADDED', 'FAVORITE_ENTITY_REMOVED');
+
+-- CreateEnum
+CREATE TYPE "QuoteStatus" AS ENUM ('DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'REFUSED', 'EXPIRED', 'CANCELLED', 'CONVERTED');
+
+-- CreateEnum
+CREATE TYPE "DiscountType" AS ENUM ('PERCENTAGE', 'FIXED_AMOUNT');
+
+-- CreateEnum
+CREATE TYPE "QuoteLineType" AS ENUM ('ITEM', 'SERVICE', 'FREE_TEXT', 'SECTION', 'COMMENT');
+
+-- CreateEnum
+CREATE TYPE "QuoteActivityType" AS ENUM ('CREATED', 'UPDATED', 'SENT', 'VIEWED', 'ACCEPTED', 'REFUSED', 'EXPIRED', 'CANCELLED', 'CONVERTED', 'DUPLICATED', 'PDF_GENERATED', 'EMAIL_SIMULATED', 'NOTE');
+
+-- CreateEnum
+CREATE TYPE "InvoiceType" AS ENUM ('STANDARD', 'DEPOSIT', 'FINAL', 'CREDITED_REFERENCE');
+
+-- CreateEnum
+CREATE TYPE "InvoiceStatus" AS ENUM ('DRAFT', 'VALIDATED', 'SENT', 'OVERDUE', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'CREDITED');
+
+-- CreateEnum
+CREATE TYPE "InvoicePaymentStatus" AS ENUM ('UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE');
+
+-- CreateEnum
+CREATE TYPE "InvoiceLineType" AS ENUM ('ITEM', 'SERVICE', 'FREE_TEXT', 'SECTION', 'COMMENT');
+
+-- CreateEnum
+CREATE TYPE "InvoiceActivityType" AS ENUM ('CREATED', 'UPDATED', 'VALIDATED', 'SENT', 'EMAIL_SIMULATED', 'PDF_GENERATED', 'MARKED_OVERDUE', 'MARKED_PAID_PLACEHOLDER', 'PARTIAL_PAYMENT_PLACEHOLDER', 'CANCELLED', 'CREDIT_NOTE_CREATED', 'ARCHIVED', 'REACTIVATED', 'CREATED_FROM_QUOTE', 'NOTE', 'PAYMENT_RECEIVED', 'PAYMENT_CANCELLED', 'REMINDER_SENT', 'COLLECTION_PAUSED', 'COLLECTION_RESUMED', 'DISPUTED', 'DISPUTE_RESOLVED', 'PROMISED_PAYMENT_DATE_SET', 'ACCOUNTING_ENTRY_GENERATED');
+
+-- CreateEnum
+CREATE TYPE "InvoiceReminderStatus" AS ENUM ('NONE', 'TO_REMIND', 'REMINDED', 'PAUSED', 'DISPUTED');
+
+-- CreateEnum
+CREATE TYPE "ReminderStatus" AS ENUM ('DRAFT', 'SIMULATED_SENT', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ReminderLevel" AS ENUM ('FRIENDLY', 'FIRST_NOTICE', 'SECOND_NOTICE', 'FINAL_NOTICE');
+
+-- CreateEnum
+CREATE TYPE "ReminderChannel" AS ENUM ('EMAIL', 'PHONE', 'LETTER', 'MANUAL');
+
+-- CreateEnum
+CREATE TYPE "ReminderActivityType" AS ENUM ('CREATED', 'UPDATED', 'EMAIL_SIMULATED', 'CANCELLED', 'NOTE', 'TEMPLATE_APPLIED', 'PAYMENT_LINK_PLACEHOLDER_ADDED');
+
+-- CreateEnum
+CREATE TYPE "ReminderNoteType" AS ENUM ('GENERAL', 'CALL', 'EMAIL', 'DISPUTE', 'PROMISE_TO_PAY', 'INTERNAL');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('DRAFT', 'CONFIRMED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('BANK_TRANSFER', 'CARD', 'CHECK', 'CASH', 'DIRECT_DEBIT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "PaymentActivityType" AS ENUM ('CREATED', 'UPDATED', 'CONFIRMED', 'ALLOCATED', 'DEALLOCATED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED', 'RECEIPT_GENERATED', 'EMAIL_SIMULATED', 'CANCELLED', 'NOTE', 'ACCOUNTING_ENTRY_GENERATED');
+
+-- CreateEnum
+CREATE TYPE "CreditNoteStatus" AS ENUM ('DRAFT', 'VALIDATED', 'SENT', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ItemType" AS ENUM ('PRODUCT', 'SERVICE');
+
+-- CreateEnum
+CREATE TYPE "ItemStatus" AS ENUM ('DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "RecurringInterval" AS ENUM ('MONTHLY', 'QUARTERLY', 'YEARLY');
+
+-- CreateEnum
+CREATE TYPE "ItemActivityType" AS ENUM ('CREATED', 'UPDATED', 'PRICE_UPDATED', 'ADDED_TO_QUOTE', 'ADDED_TO_INVOICE', 'ARCHIVED', 'REACTIVATED', 'NOTE');
+
+-- CreateEnum
+CREATE TYPE "CustomerType" AS ENUM ('COMPANY', 'INDIVIDUAL');
+
+-- CreateEnum
+CREATE TYPE "CustomerStatus" AS ENUM ('PROSPECT', 'ACTIVE', 'INACTIVE', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "CustomerAddressType" AS ENUM ('BILLING', 'SHIPPING', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "CustomerActivityType" AS ENUM ('NOTE', 'CALL', 'EMAIL', 'MEETING', 'QUOTE_CREATED', 'QUOTE_ACCEPTED', 'INVOICE_SENT', 'PAYMENT_RECEIVED', 'REMINDER_SENT');
+
+-- CreateEnum
+CREATE TYPE "SupplierType" AS ENUM ('COMPANY', 'INDIVIDUAL');
+
+-- CreateEnum
+CREATE TYPE "SupplierStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "SupplierRiskLevel" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+
+-- CreateEnum
+CREATE TYPE "SupplierAddressType" AS ENUM ('BILLING', 'SHIPPING', 'HEADQUARTERS', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "SupplierActivityType" AS ENUM ('NOTE', 'CALL', 'EMAIL', 'MEETING', 'SUPPLIER_CREATED', 'SUPPLIER_UPDATED', 'PURCHASE_ORDER_PLACEHOLDER', 'SUPPLIER_INVOICE_PLACEHOLDER', 'PAYMENT_PLACEHOLDER', 'DOCUMENT_ADDED_PLACEHOLDER');
+
+-- CreateEnum
+CREATE TYPE "SearchEntityType" AS ENUM ('CUSTOMER', 'ITEM', 'QUOTE', 'INVOICE', 'PAYMENT', 'REMINDER', 'SUPPLIER', 'SUPPLIER_INVOICE', 'ACCOUNTING_ENTRY', 'DOCUMENT', 'EXPORT_JOB', 'SETTING', 'AUDIT_LOG', 'ACTION');
+
+-- CreateEnum
+CREATE TYPE "SupplierInvoiceStatus" AS ENUM ('DRAFT', 'VALIDATED', 'CANCELLED', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "SupplierInvoicePaymentStatus" AS ENUM ('UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE');
+
+-- CreateEnum
+CREATE TYPE "SupplierInvoiceType" AS ENUM ('STANDARD', 'CREDIT_NOTE', 'DEPOSIT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "SupplierPaymentMethodPlaceholder" AS ENUM ('BANK_TRANSFER', 'CARD', 'CHECK', 'CASH', 'DIRECT_DEBIT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "SupplierInvoiceAttachmentType" AS ENUM ('INVOICE_PDF', 'RECEIPT', 'CONTRACT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "SupplierInvoiceActivityType" AS ENUM ('CREATED', 'UPDATED', 'VALIDATED', 'CANCELLED', 'ARCHIVED', 'REACTIVATED', 'ATTACHMENT_ADDED', 'MARKED_PAID_PLACEHOLDER', 'PARTIAL_PAYMENT_PLACEHOLDER', 'MARKED_OVERDUE', 'NOTE', 'ACCOUNTING_ENTRY_GENERATED');
+
+-- CreateEnum
+CREATE TYPE "AccountingAccountType" AS ENUM ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', 'TAX', 'CUSTOMER', 'SUPPLIER', 'BANK', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "AccountingAccountCategory" AS ENUM ('CUSTOMER_RECEIVABLE', 'SUPPLIER_PAYABLE', 'BANK', 'CASH', 'SALES_REVENUE', 'SERVICE_REVENUE', 'PURCHASE_EXPENSE', 'GENERAL_EXPENSE', 'VAT_COLLECTED', 'VAT_DEDUCTIBLE', 'VAT_DUE', 'DISCOUNT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "AccountingJournalType" AS ENUM ('SALES', 'PURCHASES', 'BANK', 'CASH', 'MISCELLANEOUS');
+
+-- CreateEnum
+CREATE TYPE "AccountingEntryStatus" AS ENUM ('DRAFT', 'VALIDATED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "AccountingEntrySourceType" AS ENUM ('MANUAL', 'CUSTOMER_INVOICE', 'CUSTOMER_PAYMENT', 'CUSTOMER_CREDIT_NOTE', 'SUPPLIER_INVOICE', 'SUPPLIER_PAYMENT_PLACEHOLDER', 'OPENING_BALANCE', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "DocumentType" AS ENUM ('QUOTE', 'INVOICE', 'CREDIT_NOTE', 'PAYMENT_RECEIPT', 'REMINDER', 'SUPPLIER_INVOICE', 'SUPPLIER_ATTACHMENT', 'ACCOUNTING_EXPORT', 'DASHBOARD_EXPORT', 'CUSTOMER_EXPORT', 'SUPPLIER_EXPORT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "DocumentStatus" AS ENUM ('DRAFT', 'GENERATED', 'DOWNLOADED', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "ExportType" AS ENUM ('CUSTOMERS', 'ITEMS', 'QUOTES', 'INVOICES', 'PAYMENTS', 'REMINDERS', 'SUPPLIERS', 'SUPPLIER_INVOICES', 'ACCOUNTING_ACCOUNTS', 'ACCOUNTING_JOURNALS', 'ACCOUNTING_ENTRIES', 'ACCOUNTING_ENTRY_LINES', 'GENERAL_LEDGER', 'TRIAL_BALANCE', 'VAT_SUMMARY', 'DASHBOARD_KPIS', 'DOCUMENTS', 'AUDIT_LOGS');
+
+-- CreateEnum
+CREATE TYPE "ExportStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "ExportFormat" AS ENUM ('CSV', 'JSON');
+
+-- CreateEnum
+CREATE TYPE "AppSettingCategory" AS ENUM ('GENERAL', 'COMMERCIAL', 'INVOICING', 'SUPPLIER', 'ACCOUNTING', 'DOCUMENT', 'EXPORT', 'NOTIFICATION', 'SYSTEM', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "TaxRateType" AS ENUM ('VAT', 'EXEMPT', 'REVERSE_CHARGE', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "AccountingMappingType" AS ENUM ('CUSTOMER_RECEIVABLE', 'SUPPLIER_PAYABLE', 'BANK', 'CASH', 'SALES_SERVICE', 'SALES_PRODUCT', 'VAT_COLLECTED', 'VAT_DEDUCTIBLE', 'PURCHASE_EXPENSE', 'DISCOUNT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "NotificationType" AS ENUM ('INVOICE_OVERDUE', 'QUOTE_EXPIRING', 'PAYMENT_RECEIVED', 'SUPPLIER_INVOICE_DUE', 'ACCOUNTING_ENTRY_UNBALANCED', 'EXPORT_COMPLETED');
+
+-- CreateEnum
+CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL_SIMULATED');
+
+-- CreateEnum
+CREATE TYPE "NotificationFrequency" AS ENUM ('IMMEDIATE', 'DAILY', 'WEEKLY', 'NEVER');
+
+-- CreateEnum
+CREATE TYPE "CustomFieldEntityType" AS ENUM ('CUSTOMER', 'SUPPLIER', 'ITEM', 'QUOTE', 'INVOICE', 'SUPPLIER_INVOICE');
+
+-- CreateEnum
+CREATE TYPE "CustomFieldType" AS ENUM ('TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT');
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Organization" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "legalName" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "siret" TEXT,
+    "vatNumber" TEXT,
+    "legalForm" TEXT,
+    "shareCapital" TEXT,
+    "addressLine1" TEXT,
+    "addressLine2" TEXT,
+    "postalCode" TEXT,
+    "city" TEXT,
+    "country" TEXT NOT NULL DEFAULT 'FR',
+    "phone" TEXT,
+    "email" TEXT,
+    "website" TEXT,
+    "logoUrl" TEXT,
+    "defaultCurrency" TEXT NOT NULL DEFAULT 'EUR',
+    "defaultLocale" TEXT NOT NULL DEFAULT 'fr-FR',
+    "timezone" TEXT NOT NULL DEFAULT 'Europe/Paris',
+    "fiscalYearStartMonth" INTEGER NOT NULL DEFAULT 1,
+    "defaultPaymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "defaultInvoiceFooter" TEXT,
+    "defaultQuoteFooter" TEXT,
+    "primaryColor" TEXT NOT NULL DEFAULT '#2563eb',
+    "documentPrefix" TEXT NOT NULL DEFAULT 'NG',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Organization_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SearchHistory" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "userId" TEXT,
+    "query" TEXT NOT NULL,
+    "resultType" "SearchEntityType",
+    "resultId" TEXT,
+    "resultTitle" TEXT,
+    "clicked" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SearchHistory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FavoriteEntity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "userId" TEXT,
+    "entityType" "SearchEntityType" NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "subtitle" TEXT,
+    "href" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FavoriteEntity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Role" (
+    "id" TEXT NOT NULL,
+    "key" "SystemRole" NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Role_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Permission" (
+    "id" TEXT NOT NULL,
+    "key" "PermissionKey" NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Permission_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RolePermission" (
+    "id" TEXT NOT NULL,
+    "roleId" TEXT NOT NULL,
+    "permissionId" TEXT NOT NULL,
+
+    CONSTRAINT "RolePermission_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OrganizationMember" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "roleId" TEXT NOT NULL,
+    "status" "MemberStatus" NOT NULL DEFAULT 'ACTIVE',
+    "invitedById" TEXT,
+    "joinedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OrganizationMember_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Invitation" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "roleId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "status" "MemberStatus" NOT NULL DEFAULT 'INVITED',
+    "invitedById" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Invitation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "NumberingSequence" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "NumberingSequenceType" NOT NULL,
+    "prefix" TEXT NOT NULL,
+    "nextNumber" INTEGER NOT NULL DEFAULT 1,
+    "padding" INTEGER NOT NULL DEFAULT 4,
+    "suffix" TEXT NOT NULL DEFAULT '',
+    "resetPeriod" "NumberingResetPeriod" NOT NULL DEFAULT 'NEVER',
+    "lastResetAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "NumberingSequence_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "userId" TEXT,
+    "action" "AuditAction" NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT,
+    "entityLabel" TEXT,
+    "oldValues" TEXT,
+    "newValues" TEXT,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Customer" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerNumber" TEXT NOT NULL,
+    "type" "CustomerType" NOT NULL DEFAULT 'COMPANY',
+    "status" "CustomerStatus" NOT NULL DEFAULT 'PROSPECT',
+    "name" TEXT NOT NULL,
+    "legalName" TEXT,
+    "displayName" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "website" TEXT,
+    "siret" TEXT,
+    "vatNumber" TEXT,
+    "legalForm" TEXT,
+    "industry" TEXT,
+    "employeeCount" INTEGER,
+    "annualRevenue" DOUBLE PRECISION,
+    "defaultPaymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "defaultVatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "creditLimit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "outstandingAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerContact" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    "jobTitle" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "mobile" TEXT,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomerContact_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerAddress" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "type" "CustomerAddressType" NOT NULL DEFAULT 'BILLING',
+    "label" TEXT,
+    "addressLine1" TEXT NOT NULL,
+    "addressLine2" TEXT,
+    "postalCode" TEXT NOT NULL,
+    "city" TEXT NOT NULL,
+    "region" TEXT,
+    "country" TEXT NOT NULL DEFAULT 'FR',
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomerAddress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerNote" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomerNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerTag" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomerTag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerTagAssignment" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CustomerTagAssignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "type" "CustomerActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "amount" DOUBLE PRECISION,
+    "activityDate" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CustomerActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Item" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "itemNumber" TEXT NOT NULL,
+    "sku" TEXT,
+    "type" "ItemType" NOT NULL DEFAULT 'SERVICE',
+    "status" "ItemStatus" NOT NULL DEFAULT 'ACTIVE',
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "shortDescription" TEXT,
+    "categoryId" TEXT,
+    "unitId" TEXT,
+    "imageUrl" TEXT,
+    "barcode" TEXT,
+    "defaultVatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "salePriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "salePriceIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "purchasePriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "marginAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "marginRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "isRecurring" BOOLEAN NOT NULL DEFAULT false,
+    "recurringInterval" "RecurringInterval",
+    "isStockable" BOOLEAN NOT NULL DEFAULT false,
+    "stockQuantity" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "stockAlertThreshold" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Item_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemCategory" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "parentId" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ItemCategory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemUnit" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "symbol" TEXT NOT NULL,
+    "description" TEXT,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ItemUnit_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemTag" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ItemTag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemTagAssignment" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ItemTagAssignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemPriceHistory" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "oldSalePriceExcludingTax" DOUBLE PRECISION NOT NULL,
+    "newSalePriceExcludingTax" DOUBLE PRECISION NOT NULL,
+    "oldPurchasePriceExcludingTax" DOUBLE PRECISION NOT NULL,
+    "newPurchasePriceExcludingTax" DOUBLE PRECISION NOT NULL,
+    "oldVatRate" DOUBLE PRECISION NOT NULL,
+    "newVatRate" DOUBLE PRECISION NOT NULL,
+    "changedById" TEXT,
+    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ItemPriceHistory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ItemActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "type" "ItemActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "amount" DOUBLE PRECISION,
+    "quantity" DOUBLE PRECISION,
+    "activityDate" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ItemActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Quote" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "quoteNumber" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "customerContactId" TEXT,
+    "billingAddressId" TEXT,
+    "shippingAddressId" TEXT,
+    "status" "QuoteStatus" NOT NULL DEFAULT 'DRAFT',
+    "title" TEXT NOT NULL,
+    "subject" TEXT,
+    "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "validUntil" TIMESTAMP(3) NOT NULL,
+    "acceptedAt" TIMESTAMP(3),
+    "refusedAt" TIMESTAMP(3),
+    "expiredAt" TIMESTAMP(3),
+    "sentAt" TIMESTAMP(3),
+    "convertedToInvoiceAt" TIMESTAMP(3),
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "language" TEXT NOT NULL DEFAULT 'fr-FR',
+    "paymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "introductionText" TEXT,
+    "footerText" TEXT,
+    "internalNotes" TEXT,
+    "customerNotes" TEXT,
+    "subtotalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalDiscountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "globalDiscountType" "DiscountType",
+    "globalDiscountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "shippingAmountExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "otherFeesExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdById" TEXT,
+    "updatedById" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Quote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "QuoteLine" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "quoteId" TEXT NOT NULL,
+    "itemId" TEXT,
+    "lineType" "QuoteLineType" NOT NULL DEFAULT 'ITEM',
+    "position" INTEGER NOT NULL,
+    "reference" TEXT,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "unit" TEXT NOT NULL DEFAULT 'unité',
+    "unitPriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "discountType" "DiscountType",
+    "discountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "vatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "QuoteLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "QuoteActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "quoteId" TEXT NOT NULL,
+    "userId" TEXT,
+    "type" "QuoteActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "QuoteActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Invoice" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "invoiceNumber" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "customerContactId" TEXT,
+    "billingAddressId" TEXT,
+    "shippingAddressId" TEXT,
+    "quoteId" TEXT,
+    "type" "InvoiceType" NOT NULL DEFAULT 'STANDARD',
+    "status" "InvoiceStatus" NOT NULL DEFAULT 'DRAFT',
+    "paymentStatus" "InvoicePaymentStatus" NOT NULL DEFAULT 'UNPAID',
+    "title" TEXT NOT NULL,
+    "subject" TEXT,
+    "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dueDate" TIMESTAMP(3) NOT NULL,
+    "validatedAt" TIMESTAMP(3),
+    "sentAt" TIMESTAMP(3),
+    "paidAt" TIMESTAMP(3),
+    "cancelledAt" TIMESTAMP(3),
+    "creditedAt" TIMESTAMP(3),
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "language" TEXT NOT NULL DEFAULT 'fr-FR',
+    "paymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "introductionText" TEXT,
+    "footerText" TEXT,
+    "internalNotes" TEXT,
+    "customerNotes" TEXT,
+    "subtotalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalDiscountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "amountDue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "globalDiscountType" "DiscountType",
+    "globalDiscountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "shippingAmountExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "otherFeesExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdById" TEXT,
+    "updatedById" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "reminderStatus" "InvoiceReminderStatus" NOT NULL DEFAULT 'NONE',
+    "lastReminderAt" TIMESTAMP(3),
+    "lastReminderLevel" "ReminderLevel",
+    "reminderCount" INTEGER NOT NULL DEFAULT 0,
+    "isCollectionPaused" BOOLEAN NOT NULL DEFAULT false,
+    "collectionPausedReason" TEXT,
+    "isDisputed" BOOLEAN NOT NULL DEFAULT false,
+    "disputeReason" TEXT,
+    "promisedPaymentDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InvoiceLine" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "invoiceId" TEXT NOT NULL,
+    "itemId" TEXT,
+    "quoteLineId" TEXT,
+    "lineType" "InvoiceLineType" NOT NULL DEFAULT 'ITEM',
+    "position" INTEGER NOT NULL,
+    "reference" TEXT,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "unit" TEXT NOT NULL DEFAULT 'unité',
+    "unitPriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "discountType" "DiscountType",
+    "discountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "vatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InvoiceLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InvoiceActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "invoiceId" TEXT NOT NULL,
+    "userId" TEXT,
+    "type" "InvoiceActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "InvoiceActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CreditNote" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "creditNoteNumber" TEXT NOT NULL,
+    "invoiceId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "status" "CreditNoteStatus" NOT NULL DEFAULT 'VALIDATED',
+    "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reason" TEXT NOT NULL,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CreditNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CreditNoteLine" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "creditNoteId" TEXT NOT NULL,
+    "invoiceLineId" TEXT,
+    "position" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "unitPriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "vatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CreditNoteLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Payment" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "paymentNumber" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'CONFIRMED',
+    "method" "PaymentMethod" NOT NULL,
+    "paymentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "allocatedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "unallocatedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "reference" TEXT,
+    "bankReference" TEXT,
+    "checkNumber" TEXT,
+    "cardLast4" TEXT,
+    "notes" TEXT,
+    "internalNotes" TEXT,
+    "receivedById" TEXT,
+    "cancelledAt" TIMESTAMP(3),
+    "cancellationReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentAllocation" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "paymentId" TEXT NOT NULL,
+    "invoiceId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "allocatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PaymentAllocation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "paymentId" TEXT NOT NULL,
+    "userId" TEXT,
+    "type" "PaymentActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PaymentActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReminderTemplate" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "level" "ReminderLevel" NOT NULL,
+    "subject" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReminderTemplate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Reminder" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "reminderNumber" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "invoiceId" TEXT NOT NULL,
+    "status" "ReminderStatus" NOT NULL DEFAULT 'DRAFT',
+    "level" "ReminderLevel" NOT NULL,
+    "channel" "ReminderChannel" NOT NULL DEFAULT 'EMAIL',
+    "recipientEmail" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "sentAt" TIMESTAMP(3),
+    "simulatedSentAt" TIMESTAMP(3),
+    "dueDate" TIMESTAMP(3) NOT NULL,
+    "invoiceIssueDate" TIMESTAMP(3) NOT NULL,
+    "invoiceTotalIncludingTax" DOUBLE PRECISION NOT NULL,
+    "invoiceAmountPaid" DOUBLE PRECISION NOT NULL,
+    "invoiceAmountDue" DOUBLE PRECISION NOT NULL,
+    "daysOverdue" INTEGER NOT NULL DEFAULT 0,
+    "includePaymentLinkPlaceholder" BOOLEAN NOT NULL DEFAULT false,
+    "internalNotes" TEXT,
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Reminder_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReminderActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "reminderId" TEXT NOT NULL,
+    "userId" TEXT,
+    "type" "ReminderActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ReminderActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReminderNote" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "invoiceId" TEXT,
+    "reminderId" TEXT,
+    "userId" TEXT,
+    "type" "ReminderNoteType" NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReminderNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierCategory" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierCategory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Supplier" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierNumber" TEXT NOT NULL,
+    "type" "SupplierType" NOT NULL DEFAULT 'COMPANY',
+    "status" "SupplierStatus" NOT NULL DEFAULT 'ACTIVE',
+    "name" TEXT NOT NULL,
+    "legalName" TEXT,
+    "displayName" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "website" TEXT,
+    "siret" TEXT,
+    "vatNumber" TEXT,
+    "legalForm" TEXT,
+    "industry" TEXT,
+    "categoryId" TEXT,
+    "defaultPaymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "defaultVatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "outstandingAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalPurchasesAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "riskLevel" "SupplierRiskLevel" NOT NULL DEFAULT 'LOW',
+    "isPreferred" BOOLEAN NOT NULL DEFAULT false,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Supplier_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierContact" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    "jobTitle" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "mobile" TEXT,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierContact_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierAddress" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "type" "SupplierAddressType" NOT NULL DEFAULT 'BILLING',
+    "label" TEXT,
+    "addressLine1" TEXT NOT NULL,
+    "addressLine2" TEXT,
+    "postalCode" TEXT NOT NULL,
+    "city" TEXT NOT NULL,
+    "region" TEXT,
+    "country" TEXT NOT NULL DEFAULT 'FR',
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierAddress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierBankAccount" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "iban" TEXT NOT NULL,
+    "bic" TEXT,
+    "bankName" TEXT,
+    "accountHolder" TEXT,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierBankAccount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierNote" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "userId" TEXT,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierNote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierTag" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierTag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierTagAssignment" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SupplierTagAssignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "type" "SupplierActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "amount" DOUBLE PRECISION,
+    "activityDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SupplierActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ExpenseCategory" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "defaultVatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "accountingAccountPlaceholder" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ExpenseCategory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierInvoice" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierInvoiceNumber" TEXT NOT NULL,
+    "supplierReference" TEXT,
+    "supplierId" TEXT NOT NULL,
+    "status" "SupplierInvoiceStatus" NOT NULL DEFAULT 'DRAFT',
+    "paymentStatus" "SupplierInvoicePaymentStatus" NOT NULL DEFAULT 'UNPAID',
+    "type" "SupplierInvoiceType" NOT NULL DEFAULT 'STANDARD',
+    "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "receivedDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dueDate" TIMESTAMP(3) NOT NULL,
+    "validatedAt" TIMESTAMP(3),
+    "cancelledAt" TIMESTAMP(3),
+    "paidAt" TIMESTAMP(3),
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "paymentTermsDays" INTEGER NOT NULL DEFAULT 30,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "internalNotes" TEXT,
+    "subtotalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalDiscountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "amountDue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "defaultVatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "expenseCategoryId" TEXT,
+    "paymentMethodPlaceholder" "SupplierPaymentMethodPlaceholder",
+    "createdById" TEXT,
+    "updatedById" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierInvoice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierInvoiceLine" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierInvoiceId" TEXT NOT NULL,
+    "expenseCategoryId" TEXT,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "reference" TEXT,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "unit" TEXT NOT NULL DEFAULT 'unité',
+    "unitPriceExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "vatRate" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "totalExcludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalVatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalIncludingTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierInvoiceLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierInvoiceAttachment" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierInvoiceId" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "fileUrl" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "sizeBytes" INTEGER NOT NULL DEFAULT 0,
+    "type" "SupplierInvoiceAttachmentType" NOT NULL DEFAULT 'INVOICE_PDF',
+    "uploadedById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SupplierInvoiceAttachment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierInvoiceActivity" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "supplierInvoiceId" TEXT NOT NULL,
+    "userId" TEXT,
+    "type" "SupplierInvoiceActivityType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SupplierInvoiceActivity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingAccount" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "accountNumber" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" "AccountingAccountType" NOT NULL,
+    "category" "AccountingAccountCategory" NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingAccount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingJournal" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" "AccountingJournalType" NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingJournal_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingEntry" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "entryNumber" TEXT NOT NULL,
+    "journalId" TEXT NOT NULL,
+    "status" "AccountingEntryStatus" NOT NULL DEFAULT 'DRAFT',
+    "sourceType" "AccountingEntrySourceType" NOT NULL DEFAULT 'MANUAL',
+    "sourceId" TEXT,
+    "sourceLabel" TEXT,
+    "entryDate" TIMESTAMP(3) NOT NULL,
+    "postingDate" TIMESTAMP(3),
+    "periodYear" INTEGER NOT NULL,
+    "periodMonth" INTEGER NOT NULL,
+    "label" TEXT NOT NULL,
+    "reference" TEXT,
+    "totalDebit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalCredit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "isBalanced" BOOLEAN NOT NULL DEFAULT false,
+    "generatedBySystem" BOOLEAN NOT NULL DEFAULT false,
+    "createdById" TEXT,
+    "validatedById" TEXT,
+    "validatedAt" TIMESTAMP(3),
+    "reversedEntryId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingEntryLine" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "entryId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "lineNumber" INTEGER NOT NULL DEFAULT 0,
+    "label" TEXT NOT NULL,
+    "debit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "credit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "customerId" TEXT,
+    "supplierId" TEXT,
+    "invoiceId" TEXT,
+    "supplierInvoiceId" TEXT,
+    "paymentId" TEXT,
+    "taxRate" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingEntryLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Document" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "DocumentType" NOT NULL,
+    "status" "DocumentStatus" NOT NULL DEFAULT 'GENERATED',
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "entityType" TEXT,
+    "entityId" TEXT,
+    "fileName" TEXT NOT NULL,
+    "fileUrl" TEXT,
+    "mimeType" TEXT NOT NULL,
+    "sizeBytes" INTEGER,
+    "generatedById" TEXT,
+    "generatedAt" TIMESTAMP(3),
+    "isSandbox" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ExportJob" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "ExportType" NOT NULL,
+    "status" "ExportStatus" NOT NULL DEFAULT 'PENDING',
+    "format" "ExportFormat" NOT NULL,
+    "fileName" TEXT,
+    "fileUrl" TEXT,
+    "filters" TEXT,
+    "rowCount" INTEGER,
+    "errorMessage" TEXT,
+    "requestedById" TEXT,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ExportJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DocumentTemplate" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "DocumentType" NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "headerText" TEXT,
+    "footerText" TEXT,
+    "primaryColor" TEXT,
+    "showLogo" BOOLEAN NOT NULL DEFAULT true,
+    "showSandboxBadge" BOOLEAN NOT NULL DEFAULT false,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DocumentTemplate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppSetting" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "category" "AppSettingCategory" NOT NULL DEFAULT 'OTHER',
+    "description" TEXT,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppSetting_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TaxRate" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "rate" DOUBLE PRECISION NOT NULL,
+    "type" "TaxRateType" NOT NULL DEFAULT 'VAT',
+    "country" TEXT NOT NULL DEFAULT 'FR',
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "description" TEXT,
+    "accountingCollectedAccountId" TEXT,
+    "accountingDeductibleAccountId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TaxRate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentTerm" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "days" INTEGER NOT NULL,
+    "description" TEXT,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PaymentTerm_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CurrencySetting" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "symbol" TEXT NOT NULL,
+    "exchangeRateToDefault" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CurrencySetting_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LocalizationSetting" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "locale" TEXT NOT NULL DEFAULT 'fr-FR',
+    "timezone" TEXT NOT NULL DEFAULT 'Europe/Paris',
+    "dateFormat" TEXT NOT NULL DEFAULT 'dd/MM/yyyy',
+    "numberFormat" TEXT NOT NULL DEFAULT 'fr-FR',
+    "currencyFormat" TEXT NOT NULL DEFAULT 'fr-FR',
+    "firstDayOfWeek" TEXT NOT NULL DEFAULT 'MONDAY',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LocalizationSetting_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CommercialPreference" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "defaultQuoteValidityDays" INTEGER NOT NULL DEFAULT 30,
+    "defaultQuoteIntroduction" TEXT,
+    "defaultQuoteFooter" TEXT,
+    "defaultCustomerPaymentTermId" TEXT,
+    "defaultCustomerTaxRateId" TEXT,
+    "allowQuoteDiscounts" BOOLEAN NOT NULL DEFAULT true,
+    "allowQuoteFreeTextLines" BOOLEAN NOT NULL DEFAULT true,
+    "requireCustomerForQuote" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CommercialPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InvoicingPreference" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "defaultInvoicePaymentTermId" TEXT,
+    "defaultInvoiceTaxRateId" TEXT,
+    "defaultInvoiceIntroduction" TEXT,
+    "defaultInvoiceFooter" TEXT,
+    "defaultCreditNoteFooter" TEXT,
+    "lockInvoiceAfterValidation" BOOLEAN NOT NULL DEFAULT true,
+    "allowInvoiceFromQuote" BOOLEAN NOT NULL DEFAULT true,
+    "allowDraftInvoiceDeletionSandbox" BOOLEAN NOT NULL DEFAULT false,
+    "showSandboxLegalNotice" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InvoicingPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SupplierPreference" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "defaultSupplierPaymentTermId" TEXT,
+    "defaultSupplierTaxRateId" TEXT,
+    "defaultExpenseCategoryId" TEXT,
+    "requireSupplierInvoiceAttachment" BOOLEAN NOT NULL DEFAULT false,
+    "allowSupplierBankDetailsSandbox" BOOLEAN NOT NULL DEFAULT false,
+    "defaultSupplierRiskLevel" TEXT NOT NULL DEFAULT 'LOW',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SupplierPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingPreference" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "defaultSalesJournalId" TEXT,
+    "defaultPurchaseJournalId" TEXT,
+    "defaultBankJournalId" TEXT,
+    "defaultCashJournalId" TEXT,
+    "defaultMiscJournalId" TEXT,
+    "autoGenerateEntriesFromCustomerInvoices" BOOLEAN NOT NULL DEFAULT false,
+    "autoGenerateEntriesFromCustomerPayments" BOOLEAN NOT NULL DEFAULT false,
+    "autoGenerateEntriesFromSupplierInvoices" BOOLEAN NOT NULL DEFAULT false,
+    "requireBalancedEntriesForValidation" BOOLEAN NOT NULL DEFAULT true,
+    "allowDraftUnbalancedEntries" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AccountingMapping" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "AccountingMappingType" NOT NULL,
+    "label" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "taxRateId" TEXT,
+    "expenseCategoryId" TEXT,
+    "itemCategoryId" TEXT,
+    "supplierCategoryId" TEXT,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AccountingMapping_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "NotificationPreference" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "type" "NotificationType" NOT NULL,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "channel" "NotificationChannel" NOT NULL DEFAULT 'IN_APP',
+    "frequency" "NotificationFrequency" NOT NULL DEFAULT 'IMMEDIATE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "NotificationPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FeatureFlag" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "FeatureFlag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomFieldDefinition" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "entityType" "CustomFieldEntityType" NOT NULL,
+    "key" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "fieldType" "CustomFieldType" NOT NULL,
+    "options" TEXT,
+    "isRequired" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomFieldDefinition_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Organization_slug_key" ON "Organization"("slug");
+
+-- CreateIndex
+CREATE INDEX "SearchHistory_organizationId_idx" ON "SearchHistory"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SearchHistory_userId_idx" ON "SearchHistory"("userId");
+
+-- CreateIndex
+CREATE INDEX "SearchHistory_createdAt_idx" ON "SearchHistory"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "SearchHistory_query_idx" ON "SearchHistory"("query");
+
+-- CreateIndex
+CREATE INDEX "FavoriteEntity_organizationId_idx" ON "FavoriteEntity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "FavoriteEntity_userId_idx" ON "FavoriteEntity"("userId");
+
+-- CreateIndex
+CREATE INDEX "FavoriteEntity_entityType_idx" ON "FavoriteEntity"("entityType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FavoriteEntity_organizationId_userId_entityType_entityId_key" ON "FavoriteEntity"("organizationId", "userId", "entityType", "entityId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Role_key_key" ON "Role"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Permission_key_key" ON "Permission"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RolePermission_roleId_permissionId_key" ON "RolePermission"("roleId", "permissionId");
+
+-- CreateIndex
+CREATE INDEX "OrganizationMember_organizationId_idx" ON "OrganizationMember"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "OrganizationMember_userId_idx" ON "OrganizationMember"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OrganizationMember_organizationId_userId_key" ON "OrganizationMember"("organizationId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Invitation_token_key" ON "Invitation"("token");
+
+-- CreateIndex
+CREATE INDEX "Invitation_organizationId_idx" ON "Invitation"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "NumberingSequence_organizationId_idx" ON "NumberingSequence"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "NumberingSequence_organizationId_type_key" ON "NumberingSequence"("organizationId", "type");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_organizationId_idx" ON "AuditLog"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_userId_idx" ON "AuditLog"("userId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Customer_organizationId_idx" ON "Customer"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Customer_status_idx" ON "Customer"("status");
+
+-- CreateIndex
+CREATE INDEX "Customer_isArchived_idx" ON "Customer"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "Customer_name_idx" ON "Customer"("name");
+
+-- CreateIndex
+CREATE INDEX "Customer_email_idx" ON "Customer"("email");
+
+-- CreateIndex
+CREATE INDEX "Customer_createdAt_idx" ON "Customer"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Customer_organizationId_customerNumber_key" ON "Customer"("organizationId", "customerNumber");
+
+-- CreateIndex
+CREATE INDEX "CustomerContact_organizationId_idx" ON "CustomerContact"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CustomerContact_customerId_idx" ON "CustomerContact"("customerId");
+
+-- CreateIndex
+CREATE INDEX "CustomerAddress_organizationId_idx" ON "CustomerAddress"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CustomerAddress_customerId_idx" ON "CustomerAddress"("customerId");
+
+-- CreateIndex
+CREATE INDEX "CustomerNote_organizationId_idx" ON "CustomerNote"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CustomerNote_customerId_idx" ON "CustomerNote"("customerId");
+
+-- CreateIndex
+CREATE INDEX "CustomerTag_organizationId_idx" ON "CustomerTag"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CustomerTag_organizationId_name_key" ON "CustomerTag"("organizationId", "name");
+
+-- CreateIndex
+CREATE INDEX "CustomerTagAssignment_organizationId_idx" ON "CustomerTagAssignment"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CustomerTagAssignment_customerId_tagId_key" ON "CustomerTagAssignment"("customerId", "tagId");
+
+-- CreateIndex
+CREATE INDEX "CustomerActivity_organizationId_idx" ON "CustomerActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CustomerActivity_customerId_idx" ON "CustomerActivity"("customerId");
+
+-- CreateIndex
+CREATE INDEX "CustomerActivity_activityDate_idx" ON "CustomerActivity"("activityDate");
+
+-- CreateIndex
+CREATE INDEX "Item_organizationId_idx" ON "Item"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Item_type_idx" ON "Item"("type");
+
+-- CreateIndex
+CREATE INDEX "Item_status_idx" ON "Item"("status");
+
+-- CreateIndex
+CREATE INDEX "Item_isArchived_idx" ON "Item"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "Item_name_idx" ON "Item"("name");
+
+-- CreateIndex
+CREATE INDEX "Item_sku_idx" ON "Item"("sku");
+
+-- CreateIndex
+CREATE INDEX "Item_categoryId_idx" ON "Item"("categoryId");
+
+-- CreateIndex
+CREATE INDEX "Item_createdAt_idx" ON "Item"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Item_organizationId_itemNumber_key" ON "Item"("organizationId", "itemNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Item_organizationId_sku_key" ON "Item"("organizationId", "sku");
+
+-- CreateIndex
+CREATE INDEX "ItemCategory_organizationId_idx" ON "ItemCategory"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ItemCategory_organizationId_name_key" ON "ItemCategory"("organizationId", "name");
+
+-- CreateIndex
+CREATE INDEX "ItemUnit_organizationId_idx" ON "ItemUnit"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ItemUnit_organizationId_symbol_key" ON "ItemUnit"("organizationId", "symbol");
+
+-- CreateIndex
+CREATE INDEX "ItemTag_organizationId_idx" ON "ItemTag"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ItemTag_organizationId_name_key" ON "ItemTag"("organizationId", "name");
+
+-- CreateIndex
+CREATE INDEX "ItemTagAssignment_organizationId_idx" ON "ItemTagAssignment"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ItemTagAssignment_itemId_tagId_key" ON "ItemTagAssignment"("itemId", "tagId");
+
+-- CreateIndex
+CREATE INDEX "ItemPriceHistory_organizationId_idx" ON "ItemPriceHistory"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ItemPriceHistory_itemId_idx" ON "ItemPriceHistory"("itemId");
+
+-- CreateIndex
+CREATE INDEX "ItemActivity_organizationId_idx" ON "ItemActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ItemActivity_itemId_idx" ON "ItemActivity"("itemId");
+
+-- CreateIndex
+CREATE INDEX "ItemActivity_activityDate_idx" ON "ItemActivity"("activityDate");
+
+-- CreateIndex
+CREATE INDEX "Quote_organizationId_idx" ON "Quote"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Quote_customerId_idx" ON "Quote"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Quote_status_idx" ON "Quote"("status");
+
+-- CreateIndex
+CREATE INDEX "Quote_issueDate_idx" ON "Quote"("issueDate");
+
+-- CreateIndex
+CREATE INDEX "Quote_validUntil_idx" ON "Quote"("validUntil");
+
+-- CreateIndex
+CREATE INDEX "Quote_isArchived_idx" ON "Quote"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "Quote_createdAt_idx" ON "Quote"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Quote_organizationId_quoteNumber_key" ON "Quote"("organizationId", "quoteNumber");
+
+-- CreateIndex
+CREATE INDEX "QuoteLine_organizationId_idx" ON "QuoteLine"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "QuoteLine_quoteId_idx" ON "QuoteLine"("quoteId");
+
+-- CreateIndex
+CREATE INDEX "QuoteLine_position_idx" ON "QuoteLine"("position");
+
+-- CreateIndex
+CREATE INDEX "QuoteActivity_organizationId_idx" ON "QuoteActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "QuoteActivity_quoteId_idx" ON "QuoteActivity"("quoteId");
+
+-- CreateIndex
+CREATE INDEX "QuoteActivity_createdAt_idx" ON "QuoteActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Invoice_organizationId_idx" ON "Invoice"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Invoice_customerId_idx" ON "Invoice"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Invoice_quoteId_idx" ON "Invoice"("quoteId");
+
+-- CreateIndex
+CREATE INDEX "Invoice_status_idx" ON "Invoice"("status");
+
+-- CreateIndex
+CREATE INDEX "Invoice_paymentStatus_idx" ON "Invoice"("paymentStatus");
+
+-- CreateIndex
+CREATE INDEX "Invoice_issueDate_idx" ON "Invoice"("issueDate");
+
+-- CreateIndex
+CREATE INDEX "Invoice_dueDate_idx" ON "Invoice"("dueDate");
+
+-- CreateIndex
+CREATE INDEX "Invoice_isArchived_idx" ON "Invoice"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "Invoice_createdAt_idx" ON "Invoice"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Invoice_organizationId_invoiceNumber_key" ON "Invoice"("organizationId", "invoiceNumber");
+
+-- CreateIndex
+CREATE INDEX "InvoiceLine_organizationId_idx" ON "InvoiceLine"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "InvoiceLine_invoiceId_idx" ON "InvoiceLine"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "InvoiceLine_position_idx" ON "InvoiceLine"("position");
+
+-- CreateIndex
+CREATE INDEX "InvoiceActivity_organizationId_idx" ON "InvoiceActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "InvoiceActivity_invoiceId_idx" ON "InvoiceActivity"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "InvoiceActivity_createdAt_idx" ON "InvoiceActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "CreditNote_organizationId_idx" ON "CreditNote"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CreditNote_invoiceId_idx" ON "CreditNote"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "CreditNote_customerId_idx" ON "CreditNote"("customerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CreditNote_organizationId_creditNoteNumber_key" ON "CreditNote"("organizationId", "creditNoteNumber");
+
+-- CreateIndex
+CREATE INDEX "CreditNoteLine_organizationId_idx" ON "CreditNoteLine"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CreditNoteLine_creditNoteId_idx" ON "CreditNoteLine"("creditNoteId");
+
+-- CreateIndex
+CREATE INDEX "Payment_organizationId_idx" ON "Payment"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Payment_customerId_idx" ON "Payment"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Payment_status_idx" ON "Payment"("status");
+
+-- CreateIndex
+CREATE INDEX "Payment_method_idx" ON "Payment"("method");
+
+-- CreateIndex
+CREATE INDEX "Payment_paymentDate_idx" ON "Payment"("paymentDate");
+
+-- CreateIndex
+CREATE INDEX "Payment_createdAt_idx" ON "Payment"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Payment_organizationId_paymentNumber_key" ON "Payment"("organizationId", "paymentNumber");
+
+-- CreateIndex
+CREATE INDEX "PaymentAllocation_organizationId_idx" ON "PaymentAllocation"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "PaymentAllocation_paymentId_idx" ON "PaymentAllocation"("paymentId");
+
+-- CreateIndex
+CREATE INDEX "PaymentAllocation_invoiceId_idx" ON "PaymentAllocation"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "PaymentAllocation_customerId_idx" ON "PaymentAllocation"("customerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PaymentAllocation_paymentId_invoiceId_key" ON "PaymentAllocation"("paymentId", "invoiceId");
+
+-- CreateIndex
+CREATE INDEX "PaymentActivity_organizationId_idx" ON "PaymentActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "PaymentActivity_paymentId_idx" ON "PaymentActivity"("paymentId");
+
+-- CreateIndex
+CREATE INDEX "PaymentActivity_createdAt_idx" ON "PaymentActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "ReminderTemplate_organizationId_idx" ON "ReminderTemplate"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ReminderTemplate_level_idx" ON "ReminderTemplate"("level");
+
+-- CreateIndex
+CREATE INDEX "ReminderTemplate_isActive_idx" ON "ReminderTemplate"("isActive");
+
+-- CreateIndex
+CREATE INDEX "Reminder_organizationId_idx" ON "Reminder"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Reminder_customerId_idx" ON "Reminder"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Reminder_invoiceId_idx" ON "Reminder"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "Reminder_status_idx" ON "Reminder"("status");
+
+-- CreateIndex
+CREATE INDEX "Reminder_level_idx" ON "Reminder"("level");
+
+-- CreateIndex
+CREATE INDEX "Reminder_createdAt_idx" ON "Reminder"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Reminder_simulatedSentAt_idx" ON "Reminder"("simulatedSentAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Reminder_organizationId_reminderNumber_key" ON "Reminder"("organizationId", "reminderNumber");
+
+-- CreateIndex
+CREATE INDEX "ReminderActivity_organizationId_idx" ON "ReminderActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ReminderActivity_reminderId_idx" ON "ReminderActivity"("reminderId");
+
+-- CreateIndex
+CREATE INDEX "ReminderActivity_createdAt_idx" ON "ReminderActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "ReminderNote_organizationId_idx" ON "ReminderNote"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ReminderNote_customerId_idx" ON "ReminderNote"("customerId");
+
+-- CreateIndex
+CREATE INDEX "ReminderNote_invoiceId_idx" ON "ReminderNote"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "ReminderNote_reminderId_idx" ON "ReminderNote"("reminderId");
+
+-- CreateIndex
+CREATE INDEX "ReminderNote_createdAt_idx" ON "ReminderNote"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "SupplierCategory_organizationId_idx" ON "SupplierCategory"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierCategory_isActive_idx" ON "SupplierCategory"("isActive");
+
+-- CreateIndex
+CREATE INDEX "Supplier_organizationId_idx" ON "Supplier"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Supplier_status_idx" ON "Supplier"("status");
+
+-- CreateIndex
+CREATE INDEX "Supplier_isArchived_idx" ON "Supplier"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "Supplier_name_idx" ON "Supplier"("name");
+
+-- CreateIndex
+CREATE INDEX "Supplier_email_idx" ON "Supplier"("email");
+
+-- CreateIndex
+CREATE INDEX "Supplier_categoryId_idx" ON "Supplier"("categoryId");
+
+-- CreateIndex
+CREATE INDEX "Supplier_riskLevel_idx" ON "Supplier"("riskLevel");
+
+-- CreateIndex
+CREATE INDEX "Supplier_createdAt_idx" ON "Supplier"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Supplier_organizationId_supplierNumber_key" ON "Supplier"("organizationId", "supplierNumber");
+
+-- CreateIndex
+CREATE INDEX "SupplierContact_organizationId_idx" ON "SupplierContact"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierContact_supplierId_idx" ON "SupplierContact"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierAddress_organizationId_idx" ON "SupplierAddress"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierAddress_supplierId_idx" ON "SupplierAddress"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierBankAccount_organizationId_idx" ON "SupplierBankAccount"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierBankAccount_supplierId_idx" ON "SupplierBankAccount"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierNote_organizationId_idx" ON "SupplierNote"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierNote_supplierId_idx" ON "SupplierNote"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierNote_createdAt_idx" ON "SupplierNote"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "SupplierTag_organizationId_idx" ON "SupplierTag"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierTagAssignment_organizationId_idx" ON "SupplierTagAssignment"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierTagAssignment_supplierId_idx" ON "SupplierTagAssignment"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierTagAssignment_tagId_idx" ON "SupplierTagAssignment"("tagId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SupplierTagAssignment_supplierId_tagId_key" ON "SupplierTagAssignment"("supplierId", "tagId");
+
+-- CreateIndex
+CREATE INDEX "SupplierActivity_organizationId_idx" ON "SupplierActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierActivity_supplierId_idx" ON "SupplierActivity"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierActivity_activityDate_idx" ON "SupplierActivity"("activityDate");
+
+-- CreateIndex
+CREATE INDEX "SupplierActivity_createdAt_idx" ON "SupplierActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "ExpenseCategory_organizationId_idx" ON "ExpenseCategory"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ExpenseCategory_isActive_idx" ON "ExpenseCategory"("isActive");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_organizationId_idx" ON "SupplierInvoice"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_supplierId_idx" ON "SupplierInvoice"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_status_idx" ON "SupplierInvoice"("status");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_paymentStatus_idx" ON "SupplierInvoice"("paymentStatus");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_issueDate_idx" ON "SupplierInvoice"("issueDate");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_dueDate_idx" ON "SupplierInvoice"("dueDate");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_expenseCategoryId_idx" ON "SupplierInvoice"("expenseCategoryId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_isArchived_idx" ON "SupplierInvoice"("isArchived");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoice_createdAt_idx" ON "SupplierInvoice"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SupplierInvoice_organizationId_supplierInvoiceNumber_key" ON "SupplierInvoice"("organizationId", "supplierInvoiceNumber");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceLine_organizationId_idx" ON "SupplierInvoiceLine"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceLine_supplierInvoiceId_idx" ON "SupplierInvoiceLine"("supplierInvoiceId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceLine_expenseCategoryId_idx" ON "SupplierInvoiceLine"("expenseCategoryId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceAttachment_organizationId_idx" ON "SupplierInvoiceAttachment"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceAttachment_supplierInvoiceId_idx" ON "SupplierInvoiceAttachment"("supplierInvoiceId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceActivity_organizationId_idx" ON "SupplierInvoiceActivity"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceActivity_supplierInvoiceId_idx" ON "SupplierInvoiceActivity"("supplierInvoiceId");
+
+-- CreateIndex
+CREATE INDEX "SupplierInvoiceActivity_createdAt_idx" ON "SupplierInvoiceActivity"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "AccountingAccount_organizationId_idx" ON "AccountingAccount"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingAccount_type_idx" ON "AccountingAccount"("type");
+
+-- CreateIndex
+CREATE INDEX "AccountingAccount_category_idx" ON "AccountingAccount"("category");
+
+-- CreateIndex
+CREATE INDEX "AccountingAccount_isActive_idx" ON "AccountingAccount"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AccountingAccount_organizationId_accountNumber_key" ON "AccountingAccount"("organizationId", "accountNumber");
+
+-- CreateIndex
+CREATE INDEX "AccountingJournal_organizationId_idx" ON "AccountingJournal"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingJournal_type_idx" ON "AccountingJournal"("type");
+
+-- CreateIndex
+CREATE INDEX "AccountingJournal_isActive_idx" ON "AccountingJournal"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AccountingJournal_organizationId_code_key" ON "AccountingJournal"("organizationId", "code");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_organizationId_idx" ON "AccountingEntry"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_journalId_idx" ON "AccountingEntry"("journalId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_status_idx" ON "AccountingEntry"("status");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_sourceType_idx" ON "AccountingEntry"("sourceType");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_sourceId_idx" ON "AccountingEntry"("sourceId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_entryDate_idx" ON "AccountingEntry"("entryDate");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_periodYear_periodMonth_idx" ON "AccountingEntry"("periodYear", "periodMonth");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntry_createdAt_idx" ON "AccountingEntry"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AccountingEntry_organizationId_entryNumber_key" ON "AccountingEntry"("organizationId", "entryNumber");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_organizationId_idx" ON "AccountingEntryLine"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_entryId_idx" ON "AccountingEntryLine"("entryId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_accountId_idx" ON "AccountingEntryLine"("accountId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_invoiceId_idx" ON "AccountingEntryLine"("invoiceId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_supplierInvoiceId_idx" ON "AccountingEntryLine"("supplierInvoiceId");
+
+-- CreateIndex
+CREATE INDEX "AccountingEntryLine_paymentId_idx" ON "AccountingEntryLine"("paymentId");
+
+-- CreateIndex
+CREATE INDEX "Document_organizationId_idx" ON "Document"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Document_type_idx" ON "Document"("type");
+
+-- CreateIndex
+CREATE INDEX "Document_status_idx" ON "Document"("status");
+
+-- CreateIndex
+CREATE INDEX "Document_entityType_entityId_idx" ON "Document"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "Document_createdAt_idx" ON "Document"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "ExportJob_organizationId_idx" ON "ExportJob"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "ExportJob_type_idx" ON "ExportJob"("type");
+
+-- CreateIndex
+CREATE INDEX "ExportJob_status_idx" ON "ExportJob"("status");
+
+-- CreateIndex
+CREATE INDEX "ExportJob_format_idx" ON "ExportJob"("format");
+
+-- CreateIndex
+CREATE INDEX "ExportJob_createdAt_idx" ON "ExportJob"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "DocumentTemplate_organizationId_idx" ON "DocumentTemplate"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "DocumentTemplate_type_idx" ON "DocumentTemplate"("type");
+
+-- CreateIndex
+CREATE INDEX "DocumentTemplate_isDefault_idx" ON "DocumentTemplate"("isDefault");
+
+-- CreateIndex
+CREATE INDEX "DocumentTemplate_isActive_idx" ON "DocumentTemplate"("isActive");
+
+-- CreateIndex
+CREATE INDEX "AppSetting_organizationId_idx" ON "AppSetting"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AppSetting_category_idx" ON "AppSetting"("category");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppSetting_organizationId_key_key" ON "AppSetting"("organizationId", "key");
+
+-- CreateIndex
+CREATE INDEX "TaxRate_organizationId_idx" ON "TaxRate"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "TaxRate_isActive_idx" ON "TaxRate"("isActive");
+
+-- CreateIndex
+CREATE INDEX "TaxRate_isDefault_idx" ON "TaxRate"("isDefault");
+
+-- CreateIndex
+CREATE INDEX "PaymentTerm_organizationId_idx" ON "PaymentTerm"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "PaymentTerm_isActive_idx" ON "PaymentTerm"("isActive");
+
+-- CreateIndex
+CREATE INDEX "PaymentTerm_isDefault_idx" ON "PaymentTerm"("isDefault");
+
+-- CreateIndex
+CREATE INDEX "CurrencySetting_organizationId_idx" ON "CurrencySetting"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CurrencySetting_isActive_idx" ON "CurrencySetting"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CurrencySetting_organizationId_code_key" ON "CurrencySetting"("organizationId", "code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LocalizationSetting_organizationId_key" ON "LocalizationSetting"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CommercialPreference_organizationId_key" ON "CommercialPreference"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "InvoicingPreference_organizationId_key" ON "InvoicingPreference"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SupplierPreference_organizationId_key" ON "SupplierPreference"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AccountingPreference_organizationId_key" ON "AccountingPreference"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingMapping_organizationId_idx" ON "AccountingMapping"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "AccountingMapping_type_idx" ON "AccountingMapping"("type");
+
+-- CreateIndex
+CREATE INDEX "AccountingMapping_isActive_idx" ON "AccountingMapping"("isActive");
+
+-- CreateIndex
+CREATE INDEX "NotificationPreference_organizationId_idx" ON "NotificationPreference"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "NotificationPreference_organizationId_type_key" ON "NotificationPreference"("organizationId", "type");
+
+-- CreateIndex
+CREATE INDEX "FeatureFlag_organizationId_idx" ON "FeatureFlag"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FeatureFlag_organizationId_key_key" ON "FeatureFlag"("organizationId", "key");
+
+-- CreateIndex
+CREATE INDEX "CustomFieldDefinition_organizationId_idx" ON "CustomFieldDefinition"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "CustomFieldDefinition_entityType_idx" ON "CustomFieldDefinition"("entityType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CustomFieldDefinition_organizationId_entityType_key_key" ON "CustomFieldDefinition"("organizationId", "entityType", "key");
+
+-- AddForeignKey
+ALTER TABLE "SearchHistory" ADD CONSTRAINT "SearchHistory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SearchHistory" ADD CONSTRAINT "SearchHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FavoriteEntity" ADD CONSTRAINT "FavoriteEntity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FavoriteEntity" ADD CONSTRAINT "FavoriteEntity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RolePermission" ADD CONSTRAINT "RolePermission_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RolePermission" ADD CONSTRAINT "RolePermission_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "Permission"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invitation" ADD CONSTRAINT "Invitation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invitation" ADD CONSTRAINT "Invitation_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invitation" ADD CONSTRAINT "Invitation_invitedById_fkey" FOREIGN KEY ("invitedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "NumberingSequence" ADD CONSTRAINT "NumberingSequence_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Customer" ADD CONSTRAINT "Customer_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerContact" ADD CONSTRAINT "CustomerContact_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerContact" ADD CONSTRAINT "CustomerContact_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerAddress" ADD CONSTRAINT "CustomerAddress_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerAddress" ADD CONSTRAINT "CustomerAddress_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerNote" ADD CONSTRAINT "CustomerNote_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerNote" ADD CONSTRAINT "CustomerNote_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerNote" ADD CONSTRAINT "CustomerNote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerTag" ADD CONSTRAINT "CustomerTag_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerTagAssignment" ADD CONSTRAINT "CustomerTagAssignment_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerTagAssignment" ADD CONSTRAINT "CustomerTagAssignment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerTagAssignment" ADD CONSTRAINT "CustomerTagAssignment_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "CustomerTag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerActivity" ADD CONSTRAINT "CustomerActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerActivity" ADD CONSTRAINT "CustomerActivity_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Item" ADD CONSTRAINT "Item_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Item" ADD CONSTRAINT "Item_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "ItemCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Item" ADD CONSTRAINT "Item_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "ItemUnit"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemCategory" ADD CONSTRAINT "ItemCategory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemCategory" ADD CONSTRAINT "ItemCategory_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "ItemCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemUnit" ADD CONSTRAINT "ItemUnit_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemTag" ADD CONSTRAINT "ItemTag_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemTagAssignment" ADD CONSTRAINT "ItemTagAssignment_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemTagAssignment" ADD CONSTRAINT "ItemTagAssignment_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemTagAssignment" ADD CONSTRAINT "ItemTagAssignment_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "ItemTag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemPriceHistory" ADD CONSTRAINT "ItemPriceHistory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemPriceHistory" ADD CONSTRAINT "ItemPriceHistory_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemPriceHistory" ADD CONSTRAINT "ItemPriceHistory_changedById_fkey" FOREIGN KEY ("changedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemActivity" ADD CONSTRAINT "ItemActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemActivity" ADD CONSTRAINT "ItemActivity_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_customerContactId_fkey" FOREIGN KEY ("customerContactId") REFERENCES "CustomerContact"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_billingAddressId_fkey" FOREIGN KEY ("billingAddressId") REFERENCES "CustomerAddress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_shippingAddressId_fkey" FOREIGN KEY ("shippingAddressId") REFERENCES "CustomerAddress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Quote" ADD CONSTRAINT "Quote_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteLine" ADD CONSTRAINT "QuoteLine_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteLine" ADD CONSTRAINT "QuoteLine_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteLine" ADD CONSTRAINT "QuoteLine_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteActivity" ADD CONSTRAINT "QuoteActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteActivity" ADD CONSTRAINT "QuoteActivity_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuoteActivity" ADD CONSTRAINT "QuoteActivity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_customerContactId_fkey" FOREIGN KEY ("customerContactId") REFERENCES "CustomerContact"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_billingAddressId_fkey" FOREIGN KEY ("billingAddressId") REFERENCES "CustomerAddress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_shippingAddressId_fkey" FOREIGN KEY ("shippingAddressId") REFERENCES "CustomerAddress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceLine" ADD CONSTRAINT "InvoiceLine_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceLine" ADD CONSTRAINT "InvoiceLine_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceLine" ADD CONSTRAINT "InvoiceLine_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceLine" ADD CONSTRAINT "InvoiceLine_quoteLineId_fkey" FOREIGN KEY ("quoteLineId") REFERENCES "QuoteLine"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceActivity" ADD CONSTRAINT "InvoiceActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceActivity" ADD CONSTRAINT "InvoiceActivity_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoiceActivity" ADD CONSTRAINT "InvoiceActivity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNoteLine" ADD CONSTRAINT "CreditNoteLine_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNoteLine" ADD CONSTRAINT "CreditNoteLine_creditNoteId_fkey" FOREIGN KEY ("creditNoteId") REFERENCES "CreditNote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditNoteLine" ADD CONSTRAINT "CreditNoteLine_invoiceLineId_fkey" FOREIGN KEY ("invoiceLineId") REFERENCES "InvoiceLine"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_receivedById_fkey" FOREIGN KEY ("receivedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentAllocation" ADD CONSTRAINT "PaymentAllocation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentAllocation" ADD CONSTRAINT "PaymentAllocation_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentAllocation" ADD CONSTRAINT "PaymentAllocation_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentAllocation" ADD CONSTRAINT "PaymentAllocation_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentActivity" ADD CONSTRAINT "PaymentActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentActivity" ADD CONSTRAINT "PaymentActivity_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentActivity" ADD CONSTRAINT "PaymentActivity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderTemplate" ADD CONSTRAINT "ReminderTemplate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderActivity" ADD CONSTRAINT "ReminderActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderActivity" ADD CONSTRAINT "ReminderActivity_reminderId_fkey" FOREIGN KEY ("reminderId") REFERENCES "Reminder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderActivity" ADD CONSTRAINT "ReminderActivity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderNote" ADD CONSTRAINT "ReminderNote_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderNote" ADD CONSTRAINT "ReminderNote_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderNote" ADD CONSTRAINT "ReminderNote_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderNote" ADD CONSTRAINT "ReminderNote_reminderId_fkey" FOREIGN KEY ("reminderId") REFERENCES "Reminder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReminderNote" ADD CONSTRAINT "ReminderNote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierCategory" ADD CONSTRAINT "SupplierCategory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Supplier" ADD CONSTRAINT "Supplier_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Supplier" ADD CONSTRAINT "Supplier_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "SupplierCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierContact" ADD CONSTRAINT "SupplierContact_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierContact" ADD CONSTRAINT "SupplierContact_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierAddress" ADD CONSTRAINT "SupplierAddress_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierAddress" ADD CONSTRAINT "SupplierAddress_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierBankAccount" ADD CONSTRAINT "SupplierBankAccount_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierBankAccount" ADD CONSTRAINT "SupplierBankAccount_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierNote" ADD CONSTRAINT "SupplierNote_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierNote" ADD CONSTRAINT "SupplierNote_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierNote" ADD CONSTRAINT "SupplierNote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierTag" ADD CONSTRAINT "SupplierTag_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierTagAssignment" ADD CONSTRAINT "SupplierTagAssignment_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierTagAssignment" ADD CONSTRAINT "SupplierTagAssignment_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierTagAssignment" ADD CONSTRAINT "SupplierTagAssignment_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "SupplierTag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierActivity" ADD CONSTRAINT "SupplierActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierActivity" ADD CONSTRAINT "SupplierActivity_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ExpenseCategory" ADD CONSTRAINT "ExpenseCategory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoice" ADD CONSTRAINT "SupplierInvoice_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoice" ADD CONSTRAINT "SupplierInvoice_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoice" ADD CONSTRAINT "SupplierInvoice_expenseCategoryId_fkey" FOREIGN KEY ("expenseCategoryId") REFERENCES "ExpenseCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoice" ADD CONSTRAINT "SupplierInvoice_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoice" ADD CONSTRAINT "SupplierInvoice_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceLine" ADD CONSTRAINT "SupplierInvoiceLine_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceLine" ADD CONSTRAINT "SupplierInvoiceLine_supplierInvoiceId_fkey" FOREIGN KEY ("supplierInvoiceId") REFERENCES "SupplierInvoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceLine" ADD CONSTRAINT "SupplierInvoiceLine_expenseCategoryId_fkey" FOREIGN KEY ("expenseCategoryId") REFERENCES "ExpenseCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceAttachment" ADD CONSTRAINT "SupplierInvoiceAttachment_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceAttachment" ADD CONSTRAINT "SupplierInvoiceAttachment_supplierInvoiceId_fkey" FOREIGN KEY ("supplierInvoiceId") REFERENCES "SupplierInvoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceAttachment" ADD CONSTRAINT "SupplierInvoiceAttachment_uploadedById_fkey" FOREIGN KEY ("uploadedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceActivity" ADD CONSTRAINT "SupplierInvoiceActivity_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceActivity" ADD CONSTRAINT "SupplierInvoiceActivity_supplierInvoiceId_fkey" FOREIGN KEY ("supplierInvoiceId") REFERENCES "SupplierInvoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierInvoiceActivity" ADD CONSTRAINT "SupplierInvoiceActivity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingAccount" ADD CONSTRAINT "AccountingAccount_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingJournal" ADD CONSTRAINT "AccountingJournal_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntry" ADD CONSTRAINT "AccountingEntry_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntry" ADD CONSTRAINT "AccountingEntry_journalId_fkey" FOREIGN KEY ("journalId") REFERENCES "AccountingJournal"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntry" ADD CONSTRAINT "AccountingEntry_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntry" ADD CONSTRAINT "AccountingEntry_validatedById_fkey" FOREIGN KEY ("validatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntryLine" ADD CONSTRAINT "AccountingEntryLine_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntryLine" ADD CONSTRAINT "AccountingEntryLine_entryId_fkey" FOREIGN KEY ("entryId") REFERENCES "AccountingEntry"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingEntryLine" ADD CONSTRAINT "AccountingEntryLine_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "AccountingAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_generatedById_fkey" FOREIGN KEY ("generatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ExportJob" ADD CONSTRAINT "ExportJob_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ExportJob" ADD CONSTRAINT "ExportJob_requestedById_fkey" FOREIGN KEY ("requestedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DocumentTemplate" ADD CONSTRAINT "DocumentTemplate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AppSetting" ADD CONSTRAINT "AppSetting_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TaxRate" ADD CONSTRAINT "TaxRate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentTerm" ADD CONSTRAINT "PaymentTerm_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CurrencySetting" ADD CONSTRAINT "CurrencySetting_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LocalizationSetting" ADD CONSTRAINT "LocalizationSetting_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CommercialPreference" ADD CONSTRAINT "CommercialPreference_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InvoicingPreference" ADD CONSTRAINT "InvoicingPreference_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupplierPreference" ADD CONSTRAINT "SupplierPreference_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingPreference" ADD CONSTRAINT "AccountingPreference_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AccountingMapping" ADD CONSTRAINT "AccountingMapping_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "NotificationPreference" ADD CONSTRAINT "NotificationPreference_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FeatureFlag" ADD CONSTRAINT "FeatureFlag_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomFieldDefinition" ADD CONSTRAINT "CustomFieldDefinition_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

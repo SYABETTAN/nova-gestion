@@ -1,0 +1,392 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
+import { createAuditLog } from "@/lib/audit";
+import { generateNextNumber } from "@/lib/numbering";
+import { generateItemsCsv } from "@/lib/csv";
+import { createItemSchema, itemFilterSchema, updateItemSchema } from "@/lib/item-validators";
+import { parseTagIds } from "@/lib/item-utils";
+import { computeItemPricing } from "@/lib/pricing";
+import { mapMoneyFieldsToDb, ITEM_MONEY_FIELDS } from "@/lib/money-db";
+import { moneyEq, toDbDecimal } from "@/lib/money";
+import {
+  buildItemWhere,
+  getItemByIdQuery,
+  getItemCategoriesQuery,
+  getItemStatsQuery,
+  getItemTagsQuery,
+  getItemUnitsQuery,
+  listItemsQuery,
+} from "@/lib/items";
+
+function emptyToNull(value?: string | null): string | null {
+  if (!value) return null;
+  return value;
+}
+
+function buildItemData(data: ReturnType<typeof createItemSchema.parse>) {
+  const pricing = computeItemPricing({
+    salePriceExcludingTax: data.salePriceExcludingTax,
+    purchasePriceExcludingTax: data.purchasePriceExcludingTax,
+    defaultVatRate: data.defaultVatRate,
+  });
+
+  return mapMoneyFieldsToDb(
+    {
+      type: data.type,
+      status: data.status,
+      name: data.name,
+      sku: emptyToNull(data.sku),
+      description: emptyToNull(data.description),
+      shortDescription: emptyToNull(data.shortDescription),
+      categoryId: emptyToNull(data.categoryId),
+      unitId: emptyToNull(data.unitId),
+      imageUrl: emptyToNull(data.imageUrl),
+      barcode: emptyToNull(data.barcode),
+      defaultVatRate: data.defaultVatRate,
+      salePriceExcludingTax: data.salePriceExcludingTax,
+      salePriceIncludingTax: pricing.salePriceIncludingTax,
+      purchasePriceExcludingTax: data.purchasePriceExcludingTax,
+      marginAmount: pricing.marginAmount,
+      marginRate: pricing.marginRate,
+      currency: data.currency,
+      isRecurring: data.isRecurring,
+      recurringInterval: data.isRecurring
+        ? ((data.recurringInterval as "MONTHLY" | "QUARTERLY" | "YEARLY" | undefined) ?? null)
+        : null,
+      isStockable: data.type === "SERVICE" ? false : data.isStockable,
+      stockQuantity: data.isStockable ? data.stockQuantity : 0,
+      stockAlertThreshold: data.isStockable ? data.stockAlertThreshold : 0,
+      notes: emptyToNull(data.notes),
+    },
+    [...ITEM_MONEY_FIELDS],
+  );
+}
+
+export async function listItemsAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+
+  const parsed = itemFilterSchema.safeParse(searchParams);
+  const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
+  return listItemsQuery(user.organizationId, filters);
+}
+
+export async function getItemStatsAction() {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+
+  const items = await getItemStatsQuery(user.organizationId);
+  const { computeItemStats } = await import("@/lib/item-utils");
+  return computeItemStats(items);
+}
+
+export async function getItemByIdAction(id: string) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemByIdQuery(user.organizationId, id);
+}
+
+export async function getItemCategoriesAction() {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemCategoriesQuery(user.organizationId);
+}
+
+export async function getItemUnitsAction() {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemUnitsQuery(user.organizationId);
+}
+
+export async function getItemTagsAction() {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemTagsQuery(user.organizationId);
+}
+
+export async function createItemAction(formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_CREATE");
+
+  const raw = Object.fromEntries(formData.entries());
+  raw.isRecurring = raw.isRecurring === "on" || raw.isRecurring === "true" ? "true" : "false";
+  raw.isStockable = raw.isStockable === "on" || raw.isStockable === "true" ? "true" : "false";
+
+  const parsed = createItemSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Données invalides" };
+  }
+
+  const data = parsed.data;
+  const tagIds = parseTagIds(data.tagIds);
+
+  if (data.sku) {
+    const existing = await prisma.item.findFirst({
+      where: { organizationId: user.organizationId, sku: data.sku },
+    });
+    if (existing) return { success: false, error: "Cette référence SKU existe déjà" };
+  }
+
+  const itemNumber = await generateNextNumber(user.organizationId, "ITEM", user.id);
+  const itemData = buildItemData(data);
+
+  const item = await prisma.$transaction(async (tx) => {
+    const created = await tx.item.create({
+      data: {
+        organizationId: user.organizationId,
+        itemNumber,
+        ...itemData,
+      },
+    });
+
+    for (const tagId of tagIds) {
+      await tx.itemTagAssignment.create({
+        data: { organizationId: user.organizationId, itemId: created.id, tagId },
+      });
+    }
+
+    await tx.itemActivity.create({
+      data: {
+        organizationId: user.organizationId,
+        itemId: created.id,
+        type: "CREATED",
+        title: "Article créé",
+        description: `${created.name} ajouté au catalogue.`,
+        activityDate: new Date(),
+      },
+    });
+
+    return created;
+  });
+
+  await createAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    action: "ITEM_CREATED",
+    entityType: "Item",
+    entityId: item.id,
+    entityLabel: `${item.itemNumber} — ${item.name}`,
+    newValues: { itemNumber, name: item.name, type: item.type },
+  });
+
+  revalidatePath("/items");
+  return { success: true, itemId: item.id };
+}
+
+export async function updateItemAction(itemId: string, formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_UPDATE");
+
+  const existing = await prisma.item.findFirst({
+    where: { id: itemId, organizationId: user.organizationId },
+  });
+  if (!existing) return { success: false, error: "Article introuvable" };
+  if (existing.isArchived) return { success: false, error: "Réactivez l'article avant modification" };
+
+  const raw = Object.fromEntries(formData.entries());
+  raw.isRecurring = raw.isRecurring === "on" || raw.isRecurring === "true" ? "true" : "false";
+  raw.isStockable = raw.isStockable === "on" || raw.isStockable === "true" ? "true" : "false";
+
+  const parsed = updateItemSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Données invalides" };
+  }
+
+  const data = parsed.data;
+  const tagIds = parseTagIds(data.tagIds);
+
+  if (data.sku && data.sku !== existing.sku) {
+    const dup = await prisma.item.findFirst({
+      where: { organizationId: user.organizationId, sku: data.sku, NOT: { id: itemId } },
+    });
+    if (dup) return { success: false, error: "Cette référence SKU existe déjà" };
+  }
+
+  const itemData = buildItemData(data);
+  const priceChanged =
+    !moneyEq(existing.salePriceExcludingTax, itemData.salePriceExcludingTax) ||
+    !moneyEq(existing.purchasePriceExcludingTax, itemData.purchasePriceExcludingTax) ||
+    !moneyEq(existing.defaultVatRate, itemData.defaultVatRate);
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.item.update({
+      where: { id: itemId },
+      data: itemData,
+    });
+
+    await tx.itemTagAssignment.deleteMany({ where: { itemId } });
+    for (const tagId of tagIds) {
+      await tx.itemTagAssignment.create({
+        data: { organizationId: user.organizationId, itemId, tagId },
+      });
+    }
+
+    if (priceChanged) {
+      await tx.itemPriceHistory.create({
+        data: {
+          organizationId: user.organizationId,
+          itemId,
+          oldSalePriceExcludingTax: existing.salePriceExcludingTax,
+          newSalePriceExcludingTax: itemData.salePriceExcludingTax,
+          oldPurchasePriceExcludingTax: existing.purchasePriceExcludingTax,
+          newPurchasePriceExcludingTax: itemData.purchasePriceExcludingTax,
+          oldVatRate: existing.defaultVatRate,
+          newVatRate: itemData.defaultVatRate,
+          changedById: user.id,
+        },
+      });
+
+      await tx.itemActivity.create({
+        data: {
+          organizationId: user.organizationId,
+          itemId,
+          type: "PRICE_UPDATED",
+          title: "Prix modifié",
+          description: `HT : ${existing.salePriceExcludingTax} € → ${itemData.salePriceExcludingTax} €`,
+          amount: itemData.salePriceExcludingTax,
+          activityDate: new Date(),
+        },
+      });
+    }
+
+    await tx.itemActivity.create({
+      data: {
+        organizationId: user.organizationId,
+        itemId,
+        type: "UPDATED",
+        title: "Article modifié",
+        activityDate: new Date(),
+      },
+    });
+
+    return result;
+  });
+
+  await createAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    action: priceChanged ? "ITEM_PRICE_UPDATED" : "ITEM_UPDATED",
+    entityType: "Item",
+    entityId: updated.id,
+    entityLabel: `${updated.itemNumber} — ${updated.name}`,
+    oldValues: { name: existing.name, salePriceExcludingTax: existing.salePriceExcludingTax },
+    newValues: { name: updated.name, salePriceExcludingTax: updated.salePriceExcludingTax },
+  });
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${itemId}`);
+  revalidatePath(`/items/${itemId}/edit`);
+  return { success: true };
+}
+
+export async function archiveItemAction(itemId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_DELETE");
+
+  const existing = await prisma.item.findFirst({
+    where: { id: itemId, organizationId: user.organizationId },
+  });
+  if (!existing) return { success: false, error: "Article introuvable" };
+  if (existing.isArchived) return { success: false, error: "Déjà archivé" };
+
+  await prisma.$transaction([
+    prisma.item.update({
+      where: { id: itemId },
+      data: { status: "ARCHIVED", isArchived: true, archivedAt: new Date() },
+    }),
+    prisma.itemActivity.create({
+      data: {
+        organizationId: user.organizationId,
+        itemId,
+        type: "ARCHIVED",
+        title: "Article archivé",
+        activityDate: new Date(),
+      },
+    }),
+  ]);
+
+  await createAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    action: "ITEM_ARCHIVED",
+    entityType: "Item",
+    entityId: itemId,
+    entityLabel: `${existing.itemNumber} — ${existing.name}`,
+  });
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${itemId}`);
+  return { success: true };
+}
+
+export async function reactivateItemAction(itemId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_DELETE");
+
+  const existing = await prisma.item.findFirst({
+    where: { id: itemId, organizationId: user.organizationId },
+  });
+  if (!existing) return { success: false, error: "Article introuvable" };
+  if (!existing.isArchived) return { success: false, error: "Non archivé" };
+
+  await prisma.$transaction([
+    prisma.item.update({
+      where: { id: itemId },
+      data: { status: "ACTIVE", isArchived: false, archivedAt: null },
+    }),
+    prisma.itemActivity.create({
+      data: {
+        organizationId: user.organizationId,
+        itemId,
+        type: "REACTIVATED",
+        title: "Article réactivé",
+        activityDate: new Date(),
+      },
+    }),
+  ]);
+
+  await createAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    action: "ITEM_REACTIVATED",
+    entityType: "Item",
+    entityId: itemId,
+    entityLabel: `${existing.itemNumber} — ${existing.name}`,
+  });
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${itemId}`);
+  return { success: true };
+}
+
+export async function exportItemsCsvAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+
+  const parsed = itemFilterSchema.safeParse(searchParams);
+  const filters = parsed.success ? parsed.data : {};
+  const where = buildItemWhere(user.organizationId, { ...filters, page: 1, pageSize: 10000 });
+
+  const items = await prisma.item.findMany({
+    where,
+    include: { category: true, unit: true },
+    orderBy: { name: "asc" },
+  });
+
+  const csv = generateItemsCsv(items);
+
+  await createAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    action: "ITEM_EXPORTED",
+    entityType: "Item",
+    entityLabel: `${items.length} articles exportés`,
+    newValues: { count: items.length },
+  });
+
+  return { success: true, csv, filename: "catalogue.csv" };
+}
