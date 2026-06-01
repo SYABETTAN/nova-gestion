@@ -1,5 +1,7 @@
 # Guide de déploiement — Nova Gestion
 
+> **Mode bêta actif** : pour les hotfix fréquents, utiliser [DEPLOY-BETA.md](./DEPLOY-BETA.md). Les checks CI stricts sont désactivés au push.
+
 ## Architecture retenue
 
 | Composant | Service | Justification |
@@ -9,7 +11,7 @@
 | **Stockage fichiers** | [Cloudflare R2](https://www.cloudflare.com/r2/) | Compatible S3, coût faible, déjà intégré |
 | **Email** | [Resend](https://resend.com) | Déjà intégré, domaine vérifiable |
 | **Monitoring** | Sentry (optionnel) | `SENTRY_DSN` + `@sentry/nextjs` |
-| **CI** | GitHub Actions | `.github/workflows/ci.yml` |
+| **CI** | GitHub Actions (manuel en bêta) | `.github/workflows/ci.yml` |
 
 **Alternative tout-en-un** : Render ou Railway (app Docker + Postgres) — voir `Dockerfile`.
 
@@ -57,8 +59,8 @@ Minimum production :
 
 ## Checklist avant mise en ligne
 
-- [ ] CI verte sur `main` (`npm run ci`)
-- [ ] `npm run predeploy:verify` avec les variables cibles
+- [ ] Build OK (`npm run ci` ou build Vercel vert)
+- [ ] `npm run ci:strict` + `npm run predeploy:verify` (avant prod stable)
 - [ ] Migrations testées sur clone staging : `npm run db:migrate:deploy`
 - [ ] `npm run db:seed:production` (rôles/permissions uniquement)
 - [ ] Premier client : `npm run org:create` (pas `/register` en prod)

@@ -1,5 +1,7 @@
 # Déploiement gratuit GitHub + Vercel
 
+> **Mode bêta actif** — déploiement rapide sans CI bloquante. Guide minimal : **[DEPLOY-BETA.md](./DEPLOY-BETA.md)**
+
 Guide pour obtenir une URL publique `https://votre-projet.vercel.app`.
 
 ## Stack
@@ -136,10 +138,12 @@ Référence complète : `.env.vercel.example`
 Le script `vercel-build` exécute :
 
 ```bash
-prisma generate && prisma migrate deploy && next build
+prisma generate && next build
 ```
 
 `postinstall` lance déjà `prisma generate` à l’installation.
+
+**Migrations** : manuelles après déploiement (voir [DEPLOY-BETA.md](./DEPLOY-BETA.md)).
 
 **Interdit en production** : `prisma db push`, `prisma migrate reset`.
 

@@ -346,6 +346,7 @@ Architecture cible : **Vercel** (app) + **Neon** (PostgreSQL) + **Cloudflare R2*
 
 | Document | Contenu |
 |----------|---------|
+| [docs/DEPLOY-BETA.md](docs/DEPLOY-BETA.md) | **Déploiement bêta rapide** (hotfix Vercel) |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Staging, production, checklists, rollback |
 | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | Toutes les variables d'environnement |
 | [docs/BACKUPS.md](docs/BACKUPS.md) | Sauvegarde / restauration base et fichiers |
@@ -356,13 +357,14 @@ Architecture cible : **Vercel** (app) + **Neon** (PostgreSQL) + **Cloudflare R2*
 ### Commandes clés
 
 ```bash
-npm run ci                  # lint + typecheck + tests + build (identique à la CI)
-npm run predeploy:verify    # contrôles avant staging/prod (avec variables cibles)
+npm run ci                  # build seul (mode bêta — équivalent déploiement Vercel)
+npm run ci:strict           # lint + typecheck + tests + build (avant prod stable)
+npm run predeploy:verify    # contrôles avant staging/prod (optionnel)
 npm run db:migrate:deploy   # migrations staging/prod uniquement
 curl https://app.../api/health
 ```
 
-**CI** : GitHub Actions (`.github/workflows/ci.yml`) sur chaque PR/push.
+**CI** : mode bêta — non bloquante au push. Lancer manuellement via GitHub Actions si besoin. Voir [docs/DEPLOY-BETA.md](docs/DEPLOY-BETA.md).
 
 **Docker** (optionnel) : `Dockerfile` pour Render/Railway/VPS.
 

@@ -1,4 +1,4 @@
-# Applique les migrations sur staging ou production via workflow manuel.
+# Mode bêta : migrations manuelles (ne bloquent pas le build Vercel).
 # Configurez les secrets GitHub : DATABASE_URL_STAGING, DATABASE_URL_PRODUCTION
 
 name: Deploy migrations

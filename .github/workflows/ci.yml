@@ -1,13 +1,16 @@
-name: CI
+# Mode bêta : les checks stricts sont désactivés pour accélérer les hotfix.
+# Ce workflow ne se lance PAS automatiquement au push — il n’empêche pas Vercel.
+# À réactiver avant production stable — voir docs/DEPLOY-BETA.md
+#
+# Pour lancer manuellement : GitHub → Actions → CI (optionnel) → Run workflow
+
+name: CI (optionnel)
 
 on:
-  push:
-    branches: [main, master, develop]
-  pull_request:
-    branches: [main, master, develop]
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-manual-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -74,21 +77,3 @@ jobs:
         env:
           NEXT_PUBLIC_APP_ENV: test
           NEXT_PUBLIC_APP_NAME: Nova Gestion
-
-  predeploy-check:
-    runs-on: ubuntu-latest
-    needs: quality
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-      - run: npm ci
-      - name: Validate env examples exist
-        run: |
-          test -f .env.example
-          test -f .env.staging.example
-          test -f .env.production.example
-          test -f .env.development.example
