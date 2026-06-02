@@ -35,7 +35,8 @@ export async function listSuppliersAction(searchParams: Record<string, string | 
   const user = await requireAuth();
   requirePermission(user, "SUPPLIERS_READ");
 
-  const parsed = supplierFilterSchema.safeParse(searchParams);
+  const { normalizeFilterSearchParams } = await import("@/lib/filter-params");
+  const parsed = supplierFilterSchema.safeParse(normalizeFilterSearchParams(searchParams));
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
 
   return listSuppliersQuery(user.organizationId, filters);

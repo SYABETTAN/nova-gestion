@@ -89,12 +89,12 @@ export function AuditLogPageClient({
       <form method="get" className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-5">
         <div className="space-y-2">
           <Label htmlFor="action">Action</Label>
-          <Select name="action" defaultValue={filters.action ?? ""}>
+          <Select name="action" defaultValue={filters.action || "all"}>
             <SelectTrigger id="action">
               <SelectValue placeholder="Toutes" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Toutes</SelectItem>
+              <SelectItem value="all">Toutes</SelectItem>
               {Object.entries(AUDIT_ACTION_LABELS).map(([key, label]) => (
                 <SelectItem key={key} value={key}>
                   {label}
@@ -105,12 +105,12 @@ export function AuditLogPageClient({
         </div>
         <div className="space-y-2">
           <Label htmlFor="userId">Utilisateur</Label>
-          <Select name="userId" defaultValue={filters.userId ?? ""}>
+          <Select name="userId" defaultValue={filters.userId || "all"}>
             <SelectTrigger id="userId">
               <SelectValue placeholder="Tous" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tous</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
               {users.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name}

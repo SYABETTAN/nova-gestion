@@ -17,6 +17,7 @@ import { createItemAction, updateItemAction } from "@/server/actions/item.action
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
 import { createItemCategoryAction } from "@/server/actions/item-category.actions";
 import { createSupplierAction } from "@/server/actions/supplier.actions";
+import { SELECT_NONE, optionalSelectId } from "@/lib/select-constants";
 
 type ItemFormProps = {
   mode: "create" | "edit";
@@ -57,14 +58,14 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState(item?.type ?? "SERVICE");
   const [status, setStatus] = useState(item?.status ?? "ACTIVE");
-  const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
-  const [supplierId, setSupplierId] = useState(item?.supplierId ?? "");
+  const [categoryId, setCategoryId] = useState(optionalSelectId(item?.categoryId));
+  const [supplierId, setSupplierId] = useState(optionalSelectId(item?.supplierId));
   const [localSuppliers, setLocalSuppliers] = useState(suppliers);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newFamilyName, setNewFamilyName] = useState("");
   const [newSupplierName, setNewSupplierName] = useState("");
   const [localCategories, setLocalCategories] = useState(categories);
-  const [unitId, setUnitId] = useState(item?.unitId ?? "");
+  const [unitId, setUnitId] = useState(optionalSelectId(item?.unitId));
   const [recurringInterval, setRecurringInterval] = useState(item?.recurringInterval ?? "");
   const [isRecurring, setIsRecurring] = useState(item?.isRecurring ?? false);
   const [isStockable, setIsStockable] = useState(item?.isStockable ?? false);
@@ -89,7 +90,7 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
     [localCategories],
   );
   const selectedCategory = localCategories.find((c) => c.id === categoryId);
-  const [familyId, setFamilyId] = useState(selectedCategory?.parentId ?? "");
+  const [familyId, setFamilyId] = useState(optionalSelectId(selectedCategory?.parentId));
   const visibleCategories = useMemo(
     () => localCategories.filter((c) => (familyId ? c.parentId === familyId : !c.parentId)),
     [localCategories, familyId],
@@ -231,9 +232,10 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Famille</Label>
-            <Select value={familyId} onValueChange={(value) => { setFamilyId(value); setCategoryId(""); }}>
+            <Select value={familyId} onValueChange={(value) => { setFamilyId(value); setCategoryId(SELECT_NONE); }}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {families.map((f) => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
@@ -249,6 +251,7 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {visibleCategories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
@@ -264,6 +267,7 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
             <Select value={supplierId} onValueChange={setSupplierId}>
               <SelectTrigger><SelectValue placeholder="Choisir un fournisseur..." /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={SELECT_NONE}>— Aucun —</SelectItem>
                 {localSuppliers.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -279,6 +283,7 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
             <Select value={unitId} onValueChange={setUnitId}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {units.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name} ({u.symbol})</SelectItem>
                 ))}

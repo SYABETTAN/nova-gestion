@@ -26,6 +26,7 @@ import {
   updateSupplierInvoiceAction,
 } from "@/server/actions/supplier-invoice.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
+import { SELECT_NONE, optionalSelectId, selectIdToOptional } from "@/lib/select-constants";
 
 type SupplierOption = {
   id: string;
@@ -108,8 +109,8 @@ function toDateInput(d: Date): string {
 
 function newLine(position: number, partial?: Partial<FormLine>): FormLine {
   return {
-    key: `line-${Date.now()}-${position}`,
-    expenseCategoryId: "",
+    key: `line-${position}`,
+    expenseCategoryId: SELECT_NONE,
     position,
     reference: "",
     name: "",
@@ -140,8 +141,12 @@ export function SupplierInvoiceForm({
   const [supplierId, setSupplierId] = useState(
     invoice?.supplierId ?? prefillSupplierId ?? suppliers[0]?.id ?? "",
   );
-  const [expenseCategoryId, setExpenseCategoryId] = useState(invoice?.expenseCategoryId ?? "");
-  const [paymentMethod, setPaymentMethod] = useState(invoice?.paymentMethodPlaceholder ?? "");
+  const [expenseCategoryId, setExpenseCategoryId] = useState(
+    optionalSelectId(invoice?.expenseCategoryId),
+  );
+  const [paymentMethod, setPaymentMethod] = useState(
+    optionalSelectId(invoice?.paymentMethodPlaceholder),
+  );
 
   const selectedSupplier = suppliers.find((s) => s.id === supplierId);
 
@@ -149,7 +154,7 @@ export function SupplierInvoiceForm({
     invoice?.lines.map((l, i) =>
       newLine(l.position ?? i, {
         key: `existing-${i}`,
-        expenseCategoryId: l.expenseCategoryId ?? "",
+        expenseCategoryId: optionalSelectId(l.expenseCategoryId),
         position: l.position,
         reference: l.reference ?? "",
         name: l.name,
@@ -204,7 +209,7 @@ export function SupplierInvoiceForm({
       "lines",
       JSON.stringify(
         lines.map((l, i) => ({
-          expenseCategoryId: l.expenseCategoryId || null,
+          expenseCategoryId: selectIdToOptional(l.expenseCategoryId),
           position: i,
           reference: l.reference || null,
           name: l.name,
@@ -303,7 +308,7 @@ export function SupplierInvoiceForm({
                 <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucune —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {expenseCategories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -392,7 +397,7 @@ export function SupplierInvoiceForm({
                 <SelectValue placeholder="Non renseigné" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Non renseigné —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Non renseigné —</SelectItem>
                 {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -460,7 +465,7 @@ export function SupplierInvoiceForm({
                     <SelectValue placeholder="Catégorie ligne" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— Aucune —</SelectItem>
+                    <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                     {expenseCategories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}

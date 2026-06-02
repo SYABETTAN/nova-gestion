@@ -12,8 +12,11 @@ export function formatDate(date: Date | string): string {
   }).format(new Date(date));
 }
 
+const DISPLAY_TIMEZONE = "Europe/Paris";
+
 export function formatDateShort(date: Date | string): string {
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
+    timeZone: DISPLAY_TIMEZONE,
   }).format(new Date(date));
 }

@@ -16,6 +16,7 @@ import { InvoiceTotals } from "@/components/invoices/invoice-totals";
 import { calculateInvoiceTotals } from "@/lib/invoice-calculations";
 import { createInvoiceAction, updateInvoiceAction } from "@/server/actions/invoice.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
+import { SELECT_NONE, optionalSelectId } from "@/lib/select-constants";
 
 type CustomerOption = {
   id: string;
@@ -112,7 +113,7 @@ function toDateInput(d: Date): string {
 
 function newLine(position: number, partial?: Partial<FormLine>): FormLine {
   return {
-    key: `line-${Date.now()}-${position}`,
+    key: `line-${position}`,
     itemId: null,
     lineType: "FREE_TEXT",
     position,
@@ -138,10 +139,18 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
   const defaultDue = toDateInput(new Date(Date.now() + 30 * 86400000));
 
   const [customerId, setCustomerId] = useState(invoice?.customerId ?? customers[0]?.id ?? "");
-  const [customerContactId, setCustomerContactId] = useState(invoice?.customerContactId ?? "");
-  const [billingAddressId, setBillingAddressId] = useState(invoice?.billingAddressId ?? "");
-  const [shippingAddressId, setShippingAddressId] = useState(invoice?.shippingAddressId ?? "");
-  const [globalDiscountType, setGlobalDiscountType] = useState<string>(invoice?.globalDiscountType ?? "");
+  const [customerContactId, setCustomerContactId] = useState(
+    optionalSelectId(invoice?.customerContactId),
+  );
+  const [billingAddressId, setBillingAddressId] = useState(
+    optionalSelectId(invoice?.billingAddressId),
+  );
+  const [shippingAddressId, setShippingAddressId] = useState(
+    optionalSelectId(invoice?.shippingAddressId),
+  );
+  const [globalDiscountType, setGlobalDiscountType] = useState<string>(
+    invoice?.globalDiscountType ?? SELECT_NONE,
+  );
   const [globalDiscountValue, setGlobalDiscountValue] = useState(moneyToNumber(invoice?.globalDiscountValue ?? 0));
   const [shippingAmount, setShippingAmount] = useState(moneyToNumber(invoice?.shippingAmountExcludingTax ?? 0));
   const [otherFees, setOtherFees] = useState(moneyToNumber(invoice?.otherFeesExcludingTax ?? 0));
@@ -181,7 +190,10 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
           discountValue: l.discountValue,
           vatRate: l.vatRate,
         })),
-        globalDiscountType: (globalDiscountType || null) as DiscountType | null,
+        globalDiscountType:
+          globalDiscountType === SELECT_NONE
+            ? null
+            : (globalDiscountType as DiscountType),
         globalDiscountValue,
         shippingAmountExcludingTax: shippingAmount,
         otherFeesExcludingTax: otherFees,
@@ -295,7 +307,7 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
             <Select value={customerContactId} onValueChange={setCustomerContactId}>
               <SelectTrigger><SelectValue placeholder="Contact" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucun —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucun —</SelectItem>
                 {selectedCustomer?.contacts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.firstName} {c.lastName}
@@ -309,7 +321,7 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
             <Select value={billingAddressId} onValueChange={setBillingAddressId}>
               <SelectTrigger><SelectValue placeholder="Adresse" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucune —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {selectedCustomer?.addresses.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.label ?? a.addressLine1}, {a.city}
@@ -323,7 +335,7 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
             <Select value={shippingAddressId} onValueChange={setShippingAddressId}>
               <SelectTrigger><SelectValue placeholder="Adresse" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucune —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {selectedCustomer?.addresses.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.label ?? a.addressLine1}, {a.city}
@@ -512,14 +524,17 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
                         onChange={(e) => updateLine(index, { vatRate: Number(e.target.value) })}
                       />
                       <Select
-                        value={line.discountType ?? ""}
+                        value={line.discountType ?? SELECT_NONE}
                         onValueChange={(v) =>
-                          updateLine(index, { discountType: (v || null) as DiscountType | null })
+                          updateLine(index, {
+                            discountType:
+                              v === SELECT_NONE ? null : (v as DiscountType),
+                          })
                         }
                       >
                         <SelectTrigger><SelectValue placeholder="Remise" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Aucune</SelectItem>
+                          <SelectItem value={SELECT_NONE}>Aucune</SelectItem>
                           <SelectItem value="PERCENTAGE">%</SelectItem>
                           <SelectItem value="FIXED_AMOUNT">Montant</SelectItem>
                         </SelectContent>
@@ -555,7 +570,7 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
               <Select value={globalDiscountType} onValueChange={setGlobalDiscountType}>
                 <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune</SelectItem>
+                  <SelectItem value={SELECT_NONE}>Aucune</SelectItem>
                   <SelectItem value="PERCENTAGE">Pourcentage</SelectItem>
                   <SelectItem value="FIXED_AMOUNT">Montant fixe</SelectItem>
                 </SelectContent>

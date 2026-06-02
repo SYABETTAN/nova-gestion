@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { hasFilterValue } from "@/lib/filter-params";
 import type { CustomerFilterInput } from "@/lib/customer-validators";
 import { prisma } from "@/lib/prisma";
 
@@ -24,26 +25,28 @@ export function buildCustomerWhere(
       ? { isArchived: false }
       : {}),
     ...(archivedFilter === "only" ? { isArchived: true } : {}),
-    ...(filters.status && filters.status !== "ARCHIVED"
+    ...(hasFilterValue(filters.status) && filters.status !== "ARCHIVED"
       ? { status: filters.status as Prisma.EnumCustomerStatusFilter["equals"] }
       : {}),
     ...(filters.status === "ARCHIVED" ? { status: "ARCHIVED", isArchived: true } : {}),
-    ...(filters.type ? { type: filters.type as Prisma.EnumCustomerTypeFilter["equals"] } : {}),
-    ...(filters.city
+    ...(hasFilterValue(filters.type)
+      ? { type: filters.type as Prisma.EnumCustomerTypeFilter["equals"] }
+      : {}),
+    ...(hasFilterValue(filters.city)
       ? {
           addresses: {
             some: { city: { contains: filters.city, mode: "insensitive" } },
           },
         }
       : {}),
-    ...(filters.tagId
+    ...(hasFilterValue(filters.tagId)
       ? {
           tagAssignments: {
             some: { tagId: filters.tagId },
           },
         }
       : {}),
-    ...(filters.q
+    ...(hasFilterValue(filters.q)
       ? {
           OR: [
             { name: { contains: filters.q, mode: "insensitive" } },

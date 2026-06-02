@@ -17,6 +17,7 @@ import { calculateQuoteTotals } from "@/lib/quote-calculations";
 import { isQuoteEditableWithConfirmation } from "@/lib/quote-status";
 import { createQuoteAction, updateQuoteAction } from "@/server/actions/quote.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
+import { SELECT_NONE, optionalSelectId } from "@/lib/select-constants";
 
 type CustomerOption = {
   id: string;
@@ -118,7 +119,7 @@ function toDateInput(d: Date): string {
 
 function newLine(position: number, partial?: Partial<FormLine>): FormLine {
   return {
-    key: `line-${Date.now()}-${position}`,
+    key: `line-${position}`,
     itemId: null,
     lineType: "FREE_TEXT",
     position,
@@ -152,11 +153,17 @@ export function QuoteForm({
   const defaultValid = toDateInput(new Date(Date.now() + validityDays * 86400000));
 
   const [customerId, setCustomerId] = useState(quote?.customerId ?? customers[0]?.id ?? "");
-  const [customerContactId, setCustomerContactId] = useState(quote?.customerContactId ?? "");
-  const [billingAddressId, setBillingAddressId] = useState(quote?.billingAddressId ?? "");
-  const [shippingAddressId, setShippingAddressId] = useState(quote?.shippingAddressId ?? "");
+  const [customerContactId, setCustomerContactId] = useState(
+    optionalSelectId(quote?.customerContactId),
+  );
+  const [billingAddressId, setBillingAddressId] = useState(
+    optionalSelectId(quote?.billingAddressId),
+  );
+  const [shippingAddressId, setShippingAddressId] = useState(
+    optionalSelectId(quote?.shippingAddressId),
+  );
   const [globalDiscountType, setGlobalDiscountType] = useState<string>(
-    quote?.globalDiscountType ?? "",
+    quote?.globalDiscountType ?? SELECT_NONE,
   );
   const [globalDiscountValue] = useState(moneyToNumber(quote?.globalDiscountValue ?? 0));
   const [shippingAmount] = useState(moneyToNumber(quote?.shippingAmountExcludingTax ?? 0));
@@ -196,7 +203,10 @@ export function QuoteForm({
           discountValue: l.discountValue,
           vatRate: l.vatRate,
         })),
-        globalDiscountType: (globalDiscountType || null) as DiscountType | null,
+        globalDiscountType:
+          globalDiscountType === SELECT_NONE
+            ? null
+            : (globalDiscountType as DiscountType),
         globalDiscountValue,
         shippingAmountExcludingTax: shippingAmount,
         otherFeesExcludingTax: otherFees,
@@ -315,7 +325,7 @@ export function QuoteForm({
             <Select value={customerContactId} onValueChange={setCustomerContactId}>
               <SelectTrigger><SelectValue placeholder="Contact" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucun —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucun —</SelectItem>
                 {selectedCustomer?.contacts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.firstName} {c.lastName}
@@ -329,7 +339,7 @@ export function QuoteForm({
             <Select value={billingAddressId} onValueChange={setBillingAddressId}>
               <SelectTrigger><SelectValue placeholder="Adresse" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucune —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {selectedCustomer?.addresses.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.label ?? a.addressLine1}, {a.city}
@@ -343,7 +353,7 @@ export function QuoteForm({
             <Select value={shippingAddressId} onValueChange={setShippingAddressId}>
               <SelectTrigger><SelectValue placeholder="Adresse" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucune —</SelectItem>
+                <SelectItem value={SELECT_NONE}>— Aucune —</SelectItem>
                 {selectedCustomer?.addresses.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.label ?? a.addressLine1}, {a.city}
@@ -533,14 +543,17 @@ export function QuoteForm({
                         onChange={(e) => updateLine(index, { vatRate: Number(e.target.value) })}
                       />
                       <Select
-                        value={line.discountType ?? ""}
+                        value={line.discountType ?? SELECT_NONE}
                         onValueChange={(v) =>
-                          updateLine(index, { discountType: (v || null) as DiscountType | null })
+                          updateLine(index, {
+                            discountType:
+                              v === SELECT_NONE ? null : (v as DiscountType),
+                          })
                         }
                       >
                         <SelectTrigger><SelectValue placeholder="Remise" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Aucune</SelectItem>
+                          <SelectItem value={SELECT_NONE}>Aucune</SelectItem>
                           <SelectItem value="PERCENTAGE">%</SelectItem>
                           <SelectItem value="FIXED_AMOUNT">Montant</SelectItem>
                         </SelectContent>
@@ -576,7 +589,7 @@ export function QuoteForm({
               <Select value={globalDiscountType} onValueChange={setGlobalDiscountType}>
                 <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune</SelectItem>
+                  <SelectItem value={SELECT_NONE}>Aucune</SelectItem>
                   <SelectItem value="PERCENTAGE">Pourcentage</SelectItem>
                   <SelectItem value="FIXED_AMOUNT">Montant fixe</SelectItem>
                 </SelectContent>

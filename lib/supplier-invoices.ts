@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { hasFilterValue } from "@/lib/filter-params";
 import type { SupplierInvoiceFilterInput } from "@/lib/supplier-invoice-validators";
 import { prisma } from "@/lib/prisma";
 import { isSupplierInvoiceOverdue } from "@/lib/supplier-invoice-status";
@@ -28,13 +29,19 @@ export function buildSupplierInvoiceWhere(
     organizationId,
     ...(archivedFilter === "false" ? { isArchived: false } : {}),
     ...(archivedFilter === "only" ? { isArchived: true } : {}),
-    ...(filters.status ? { status: filters.status as Prisma.EnumSupplierInvoiceStatusFilter["equals"] } : {}),
+    ...(hasFilterValue(filters.status)
+      ? { status: filters.status as Prisma.EnumSupplierInvoiceStatusFilter["equals"] }
+      : {}),
     ...(filters.paymentStatus
       ? { paymentStatus: filters.paymentStatus as Prisma.EnumSupplierInvoicePaymentStatusFilter["equals"] }
       : {}),
-    ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
-    ...(filters.expenseCategoryId ? { expenseCategoryId: filters.expenseCategoryId } : {}),
-    ...(filters.type ? { type: filters.type as Prisma.EnumSupplierInvoiceTypeFilter["equals"] } : {}),
+    ...(hasFilterValue(filters.supplierId) ? { supplierId: filters.supplierId } : {}),
+    ...(hasFilterValue(filters.expenseCategoryId)
+      ? { expenseCategoryId: filters.expenseCategoryId }
+      : {}),
+    ...(hasFilterValue(filters.type)
+      ? { type: filters.type as Prisma.EnumSupplierInvoiceTypeFilter["equals"] }
+      : {}),
     ...(issueDateFrom || issueDateTo
       ? {
           issueDate: {

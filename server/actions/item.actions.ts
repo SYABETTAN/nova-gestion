@@ -23,7 +23,7 @@ import {
 } from "@/lib/items";
 
 function emptyToNull(value?: string | null): string | null {
-  if (!value) return null;
+  if (!value || value === "none") return null;
   return value;
 }
 
@@ -71,7 +71,8 @@ export async function listItemsAction(searchParams: Record<string, string | unde
   const user = await requireAuth();
   requirePermission(user, "ITEMS_READ");
 
-  const parsed = itemFilterSchema.safeParse(searchParams);
+  const { normalizeFilterSearchParams } = await import("@/lib/filter-params");
+  const parsed = itemFilterSchema.safeParse(normalizeFilterSearchParams(searchParams));
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
   return listItemsQuery(user.organizationId, filters);
 }

@@ -1,4 +1,5 @@
 import { AuditAction } from "@prisma/client";
+import { hasFilterValue } from "@/lib/filter-params";
 import { prisma } from "@/lib/prisma";
 
 export type CreateAuditLogInput = {
@@ -49,8 +50,12 @@ export async function getAuditLogs(filters: AuditLogFilters) {
 
   const where = {
     organizationId: filters.organizationId,
-    ...(filters.action ? { action: filters.action as AuditAction } : {}),
-    ...(filters.userId ? { userId: filters.userId } : {}),
+    ...(hasFilterValue(filters.action) && filters.action !== "all"
+      ? { action: filters.action as AuditAction }
+      : {}),
+    ...(hasFilterValue(filters.userId) && filters.userId !== "all"
+      ? { userId: filters.userId }
+      : {}),
     ...(filters.entityType ? { entityType: filters.entityType } : {}),
     ...(filters.dateFrom || filters.dateTo
       ? {

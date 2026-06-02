@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { hasFilterValue } from "@/lib/filter-params";
 import type { ItemFilterInput } from "@/lib/item-validators";
 import { prisma } from "@/lib/prisma";
 
@@ -21,23 +22,25 @@ export function buildItemWhere(
       ? { isArchived: false }
       : {}),
     ...(archivedFilter === "only" ? { isArchived: true } : {}),
-    ...(filters.type ? { type: filters.type as Prisma.EnumItemTypeFilter["equals"] } : {}),
-    ...(filters.status && filters.status !== "ARCHIVED"
+    ...(hasFilterValue(filters.type)
+      ? { type: filters.type as Prisma.EnumItemTypeFilter["equals"] }
+      : {}),
+    ...(hasFilterValue(filters.status) && filters.status !== "ARCHIVED"
       ? { status: filters.status as Prisma.EnumItemStatusFilter["equals"] }
       : {}),
     ...(filters.status === "ARCHIVED" ? { status: "ARCHIVED", isArchived: true } : {}),
-    ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-    ...(filters.familyId ? { category: { parentId: filters.familyId } } : {}),
-    ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
+    ...(hasFilterValue(filters.categoryId) ? { categoryId: filters.categoryId } : {}),
+    ...(hasFilterValue(filters.familyId) ? { category: { parentId: filters.familyId } } : {}),
+    ...(hasFilterValue(filters.supplierId) ? { supplierId: filters.supplierId } : {}),
     ...(filters.vatRate ? { defaultVatRate: Number(filters.vatRate) } : {}),
     ...(filters.isRecurring === "true" ? { isRecurring: true } : {}),
     ...(filters.isRecurring === "false" ? { isRecurring: false } : {}),
     ...(filters.isStockable === "true" ? { isStockable: true } : {}),
     ...(filters.isStockable === "false" ? { isStockable: false } : {}),
-    ...(filters.tagId
+    ...(hasFilterValue(filters.tagId)
       ? { tagAssignments: { some: { tagId: filters.tagId } } }
       : {}),
-    ...(filters.q
+    ...(hasFilterValue(filters.q)
       ? {
           OR: [
             { name: { contains: filters.q, mode: "insensitive" } },

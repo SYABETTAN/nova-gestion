@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { hasFilterValue } from "@/lib/filter-params";
 import type { SupplierFilterInput } from "@/lib/supplier-validators";
 import { prisma } from "@/lib/prisma";
 
@@ -20,23 +21,25 @@ export function buildSupplierWhere(
       ? { isArchived: false }
       : {}),
     ...(archivedFilter === "only" ? { isArchived: true } : {}),
-    ...(filters.status && filters.status !== "ARCHIVED"
+    ...(hasFilterValue(filters.status) && filters.status !== "ARCHIVED"
       ? { status: filters.status as Prisma.EnumSupplierStatusFilter["equals"] }
       : {}),
     ...(filters.status === "ARCHIVED" ? { status: "ARCHIVED", isArchived: true } : {}),
-    ...(filters.type ? { type: filters.type as Prisma.EnumSupplierTypeFilter["equals"] } : {}),
-    ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-    ...(filters.riskLevel
+    ...(hasFilterValue(filters.type)
+      ? { type: filters.type as Prisma.EnumSupplierTypeFilter["equals"] }
+      : {}),
+    ...(hasFilterValue(filters.categoryId) ? { categoryId: filters.categoryId } : {}),
+    ...(hasFilterValue(filters.riskLevel)
       ? { riskLevel: filters.riskLevel as Prisma.EnumSupplierRiskLevelFilter["equals"] }
       : {}),
     ...(filters.preferred === "true" ? { isPreferred: true } : {}),
-    ...(filters.city
+    ...(hasFilterValue(filters.city)
       ? { addresses: { some: { city: { contains: filters.city, mode: "insensitive" } } } }
       : {}),
-    ...(filters.tagId
+    ...(hasFilterValue(filters.tagId)
       ? { tagAssignments: { some: { tagId: filters.tagId } } }
       : {}),
-    ...(filters.q
+    ...(hasFilterValue(filters.q)
       ? {
           OR: [
             { name: { contains: filters.q, mode: "insensitive" } },

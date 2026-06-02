@@ -32,7 +32,7 @@ import {
 import { moneyToNumber, toDbDecimal } from "@/lib/money";
 
 function emptyToNull(value?: string | null): string | null {
-  if (value === undefined || value === null || value === "") return null;
+  if (value === undefined || value === null || value === "" || value === "none") return null;
   return String(value);
 }
 
