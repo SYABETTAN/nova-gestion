@@ -16,7 +16,7 @@ import { InvoiceTotals } from "@/components/invoices/invoice-totals";
 import { calculateInvoiceTotals } from "@/lib/invoice-calculations";
 import { createInvoiceAction, updateInvoiceAction } from "@/server/actions/invoice.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
-import { SELECT_NONE, optionalSelectId } from "@/lib/select-constants";
+import { SELECT_NONE, formOptionalValue, optionalSelectId } from "@/lib/select-constants";
 
 type CustomerOption = {
   id: string;
@@ -231,10 +231,10 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     formData.set("customerId", customerId);
-    formData.set("customerContactId", customerContactId);
-    formData.set("billingAddressId", billingAddressId);
-    formData.set("shippingAddressId", shippingAddressId);
-    formData.set("globalDiscountType", globalDiscountType);
+    formData.set("customerContactId", formOptionalValue(customerContactId));
+    formData.set("billingAddressId", formOptionalValue(billingAddressId));
+    formData.set("shippingAddressId", formOptionalValue(shippingAddressId));
+    formData.set("globalDiscountType", formOptionalValue(globalDiscountType));
     formData.set("type", invoiceType);
     formData.set("globalDiscountValue", String(globalDiscountValue));
     formData.set("shippingAmountExcludingTax", String(shippingAmount));

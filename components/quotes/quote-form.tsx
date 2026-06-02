@@ -17,7 +17,7 @@ import { calculateQuoteTotals } from "@/lib/quote-calculations";
 import { isQuoteEditableWithConfirmation } from "@/lib/quote-status";
 import { createQuoteAction, updateQuoteAction } from "@/server/actions/quote.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
-import { SELECT_NONE, optionalSelectId } from "@/lib/select-constants";
+import { SELECT_NONE, formOptionalValue, optionalSelectId } from "@/lib/select-constants";
 
 type CustomerOption = {
   id: string;
@@ -248,10 +248,10 @@ export function QuoteForm({
 
     setLoading(true);
     formData.set("customerId", customerId);
-    formData.set("customerContactId", customerContactId);
-    formData.set("billingAddressId", billingAddressId);
-    formData.set("shippingAddressId", shippingAddressId);
-    formData.set("globalDiscountType", globalDiscountType);
+    formData.set("customerContactId", formOptionalValue(customerContactId));
+    formData.set("billingAddressId", formOptionalValue(billingAddressId));
+    formData.set("shippingAddressId", formOptionalValue(shippingAddressId));
+    formData.set("globalDiscountType", formOptionalValue(globalDiscountType));
     formData.set(
       "lines",
       JSON.stringify(

@@ -1,6 +1,15 @@
 import { z } from "zod";
+import { SELECT_NONE } from "@/lib/select-constants";
 
-const discountTypeSchema = z.enum(["PERCENTAGE", "FIXED_AMOUNT"]).optional().nullable();
+const discountTypeSchema = z.preprocess(
+  (value) => {
+    if (value === null || value === undefined || value === "" || value === SELECT_NONE) {
+      return null;
+    }
+    return value;
+  },
+  z.enum(["PERCENTAGE", "FIXED_AMOUNT"]).nullable().optional(),
+);
 const lineTypeSchema = z.enum(["ITEM", "SERVICE", "FREE_TEXT", "SECTION", "COMMENT"]);
 
 export const quoteLineInputSchema = z

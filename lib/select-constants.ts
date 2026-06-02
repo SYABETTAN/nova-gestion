@@ -15,3 +15,9 @@ export function emptyFormValueToNull(value?: string | null): string | null {
   if (!value || value === SELECT_NONE) return null;
   return value;
 }
+
+/** Valeur à mettre dans FormData pour un champ optionnel (évite d'envoyer "none"). */
+export function formOptionalValue(value: string): string {
+  if (!value || value === SELECT_NONE) return "";
+  return value;
+}
