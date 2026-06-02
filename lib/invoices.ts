@@ -2,6 +2,12 @@ import type { Prisma } from "@prisma/client";
 import type { InvoiceFilterInput } from "@/lib/invoice-validators";
 import { prisma } from "@/lib/prisma";
 
+function safeDate(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 const defaultInclude = {
   customer: { select: { id: true, name: true, customerNumber: true, email: true } },
   customerContact: {
@@ -28,6 +34,10 @@ export function buildInvoiceWhere(
   filters: Partial<InvoiceFilterInput>,
 ): Prisma.InvoiceWhereInput {
   const archivedFilter = filters.archived ?? "false";
+  const issueDateFrom = safeDate(filters.issueDateFrom);
+  const issueDateTo = safeDate(filters.issueDateTo);
+  const dueDateFrom = safeDate(filters.dueDateFrom);
+  const dueDateTo = safeDate(filters.dueDateTo);
 
   return {
     organizationId,
@@ -42,19 +52,19 @@ export function buildInvoiceWhere(
     ...(filters.overdue === "true"
       ? { OR: [{ status: "OVERDUE" }, { paymentStatus: "OVERDUE" }] }
       : {}),
-    ...(filters.issueDateFrom || filters.issueDateTo
+    ...(issueDateFrom || issueDateTo
       ? {
           issueDate: {
-            ...(filters.issueDateFrom ? { gte: new Date(filters.issueDateFrom) } : {}),
-            ...(filters.issueDateTo ? { lte: new Date(filters.issueDateTo) } : {}),
+            ...(issueDateFrom ? { gte: issueDateFrom } : {}),
+            ...(issueDateTo ? { lte: issueDateTo } : {}),
           },
         }
       : {}),
-    ...(filters.dueDateFrom || filters.dueDateTo
+    ...(dueDateFrom || dueDateTo
       ? {
           dueDate: {
-            ...(filters.dueDateFrom ? { gte: new Date(filters.dueDateFrom) } : {}),
-            ...(filters.dueDateTo ? { lte: new Date(filters.dueDateTo) } : {}),
+            ...(dueDateFrom ? { gte: dueDateFrom } : {}),
+            ...(dueDateTo ? { lte: dueDateTo } : {}),
           },
         }
       : {}),
@@ -69,12 +79,12 @@ export function buildInvoiceWhere(
     ...(filters.q
       ? {
           OR: [
-            { invoiceNumber: { contains: filters.q } },
-            { title: { contains: filters.q } },
-            { subject: { contains: filters.q } },
-            { internalNotes: { contains: filters.q } },
-            { customerNotes: { contains: filters.q } },
-            { customer: { name: { contains: filters.q } } },
+            { invoiceNumber: { contains: filters.q, mode: "insensitive" } },
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { subject: { contains: filters.q, mode: "insensitive" } },
+            { internalNotes: { contains: filters.q, mode: "insensitive" } },
+            { customerNotes: { contains: filters.q, mode: "insensitive" } },
+            { customer: { name: { contains: filters.q, mode: "insensitive" } } },
           ],
         }
       : {}),

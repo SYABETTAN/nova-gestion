@@ -145,7 +145,7 @@ export function InvoicesPageClient({
 
       <Card>
         <CardContent className="pt-6">
-          <form method="get" className="grid gap-4 md:grid-cols-6">
+          <form method="get" className="grid gap-4 md:grid-cols-8">
             <div className="md:col-span-2 space-y-2">
               <Label htmlFor="q">Recherche</Label>
               <Input id="q" name="q" defaultValue={filters.q} placeholder="N° facture, client..." />
@@ -175,7 +175,20 @@ export function InvoicesPageClient({
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="flex items-end"><Button type="submit" className="w-full">Filtrer</Button></div>
+            <div className="space-y-2">
+              <Label htmlFor="issueDateFrom">Date début</Label>
+              <Input id="issueDateFrom" name="issueDateFrom" type="date" defaultValue={filters.issueDateFrom ?? ""} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="issueDateTo">Date fin</Label>
+              <Input id="issueDateTo" name="issueDateTo" type="date" defaultValue={filters.issueDateTo ?? ""} />
+            </div>
+            <div className="flex items-end gap-2 md:col-span-2">
+              <Button type="submit" className="w-full">Filtrer</Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => router.push("/invoices")}>
+                Reinitialiser
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -183,7 +196,9 @@ export function InvoicesPageClient({
       <Card>
         <CardContent className="p-0">
           {invoices.length === 0 ? (
-            <p className="p-8 text-center text-[var(--color-muted-foreground)]">Aucune facture pour le moment.</p>
+            <p className="p-8 text-center text-[var(--color-muted-foreground)]">
+              Aucune facture trouvee pour les filtres actuels.
+            </p>
           ) : (
             <Table>
               <TableHeader>

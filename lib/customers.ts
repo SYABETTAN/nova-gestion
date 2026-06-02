@@ -32,7 +32,7 @@ export function buildCustomerWhere(
     ...(filters.city
       ? {
           addresses: {
-            some: { city: { contains: filters.city } },
+            some: { city: { contains: filters.city, mode: "insensitive" } },
           },
         }
       : {}),
@@ -46,13 +46,27 @@ export function buildCustomerWhere(
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { customerNumber: { contains: filters.q } },
-            { email: { contains: filters.q } },
-            { phone: { contains: filters.q } },
-            { siret: { contains: filters.q } },
-            { vatNumber: { contains: filters.q } },
-            { legalName: { contains: filters.q } },
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { displayName: { contains: filters.q, mode: "insensitive" } },
+            { customerNumber: { contains: filters.q, mode: "insensitive" } },
+            { email: { contains: filters.q, mode: "insensitive" } },
+            { phone: { contains: filters.q, mode: "insensitive" } },
+            { siret: { contains: filters.q, mode: "insensitive" } },
+            { vatNumber: { contains: filters.q, mode: "insensitive" } },
+            { legalName: { contains: filters.q, mode: "insensitive" } },
+            {
+              contacts: {
+                some: {
+                  OR: [
+                    { firstName: { contains: filters.q, mode: "insensitive" } },
+                    { lastName: { contains: filters.q, mode: "insensitive" } },
+                    { email: { contains: filters.q, mode: "insensitive" } },
+                    { phone: { contains: filters.q, mode: "insensitive" } },
+                    { mobile: { contains: filters.q, mode: "insensitive" } },
+                  ],
+                },
+              },
+            },
           ],
         }
       : {}),
@@ -106,7 +120,7 @@ export async function getCustomerByIdQuery(organizationId: string, id: string) {
   return prisma.customer.findFirst({
     where: { id, organizationId },
     include: {
-      contacts: { orderBy: [{ isPrimary: "desc" }, { lastName: "asc" }] },
+      contacts: { orderBy: [{ isArchived: "asc" }, { isPrimary: "desc" }, { lastName: "asc" }] },
       addresses: { orderBy: [{ isDefault: "desc" }, { type: "asc" }] },
       customerNotes: {
         include: { user: { select: { id: true, name: true } } },

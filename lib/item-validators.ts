@@ -11,10 +11,13 @@ const itemBaseFields = {
   type: z.enum(["PRODUCT", "SERVICE"]).default("SERVICE"),
   status: z.enum(["DRAFT", "ACTIVE", "INACTIVE"]).default("ACTIVE"),
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  itemNumber: z.string().trim().min(1).optional().or(z.literal("")),
   sku: z.string().optional(),
   description: z.string().optional(),
   shortDescription: z.string().optional(),
   categoryId: z.string().optional().or(z.literal("")),
+  familyId: z.string().optional().or(z.literal("")),
+  supplierId: z.string().optional().or(z.literal("")),
   unitId: z.string().optional().or(z.literal("")),
   imageUrl: optionalUrl,
   barcode: z.string().optional(),
@@ -59,6 +62,8 @@ export const itemFilterSchema = z.object({
   type: z.string().optional(),
   status: z.string().optional(),
   categoryId: z.string().optional(),
+  familyId: z.string().optional(),
+  supplierId: z.string().optional(),
   tagId: z.string().optional(),
   vatRate: z.string().optional(),
   archived: z.enum(["true", "false", "only"]).optional(),
@@ -76,6 +81,7 @@ export const createItemCategorySchema = z.object({
   name: z.string().min(2, "Nom requis"),
   description: z.string().optional(),
   color: z.string().default("#64748b"),
+  parentId: z.string().optional().or(z.literal("")),
 });
 
 export const createItemTagSchema = z.object({

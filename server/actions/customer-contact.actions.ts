@@ -33,7 +33,7 @@ export async function createCustomerContactAction(customerId: string, formData: 
 
   const data = parsed.data;
   const existingCount = await prisma.customerContact.count({
-    where: { customerId, organizationId: user.organizationId },
+    where: { customerId, organizationId: user.organizationId, isArchived: false },
   });
 
   const isPrimary = data.isPrimary ?? existingCount === 0;
@@ -132,7 +132,10 @@ export async function deleteCustomerContactAction(contactId: string) {
   });
   if (!existing) return { success: false, error: "Contact introuvable" };
 
-  await prisma.customerContact.delete({ where: { id: contactId } });
+  await prisma.customerContact.update({
+    where: { id: contactId },
+    data: { isArchived: true, archivedAt: new Date(), isPrimary: false },
+  });
 
   await createAuditLog({
     organizationId: user.organizationId,
@@ -141,6 +144,24 @@ export async function deleteCustomerContactAction(contactId: string) {
     entityType: "CustomerContact",
     entityId: contactId,
     entityLabel: `${existing.firstName} ${existing.lastName}`,
+  });
+
+  revalidateCustomer(existing.customerId);
+  return { success: true };
+}
+
+export async function reactivateCustomerContactAction(contactId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_UPDATE");
+
+  const existing = await prisma.customerContact.findFirst({
+    where: { id: contactId, organizationId: user.organizationId },
+  });
+  if (!existing) return { success: false, error: "Contact introuvable" };
+
+  await prisma.customerContact.update({
+    where: { id: contactId },
+    data: { isArchived: false, archivedAt: null },
   });
 
   revalidateCustomer(existing.customerId);
@@ -157,7 +178,7 @@ export async function setPrimaryContactAction(contactId: string) {
   if (!existing) return { success: false, error: "Contact introuvable" };
 
   await prisma.customerContact.updateMany({
-    where: { customerId: existing.customerId, organizationId: user.organizationId },
+    where: { customerId: existing.customerId, organizationId: user.organizationId, isArchived: false },
     data: { isPrimary: false },
   });
 

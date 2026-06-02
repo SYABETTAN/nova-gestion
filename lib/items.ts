@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 const defaultInclude = {
   category: true,
+  supplier: { select: { id: true, name: true, supplierNumber: true } },
   unit: true,
   tagAssignments: { include: { tag: true } },
 } satisfies Prisma.ItemInclude;
@@ -26,6 +27,8 @@ export function buildItemWhere(
       : {}),
     ...(filters.status === "ARCHIVED" ? { status: "ARCHIVED", isArchived: true } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+    ...(filters.familyId ? { category: { parentId: filters.familyId } } : {}),
+    ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
     ...(filters.vatRate ? { defaultVatRate: Number(filters.vatRate) } : {}),
     ...(filters.isRecurring === "true" ? { isRecurring: true } : {}),
     ...(filters.isRecurring === "false" ? { isRecurring: false } : {}),
@@ -37,12 +40,12 @@ export function buildItemWhere(
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { itemNumber: { contains: filters.q } },
-            { sku: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { barcode: { contains: filters.q } },
-            { shortDescription: { contains: filters.q } },
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { itemNumber: { contains: filters.q, mode: "insensitive" } },
+            { sku: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { barcode: { contains: filters.q, mode: "insensitive" } },
+            { shortDescription: { contains: filters.q, mode: "insensitive" } },
           ],
         }
       : {}),

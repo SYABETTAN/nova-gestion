@@ -54,6 +54,7 @@ import {
 import {
   createCustomerContactAction,
   deleteCustomerContactAction,
+  reactivateCustomerContactAction,
   setPrimaryContactAction,
 } from "@/server/actions/customer-contact.actions";
 import { createCustomerNoteAction } from "@/server/actions/customer-note.actions";
@@ -394,18 +395,27 @@ function ContactsSection({
   customerId: string;
   contacts: CustomerDetail["contacts"];
 }) {
+  const [showArchivedContacts, setShowArchivedContacts] = useState(false);
+  const visibleContacts = contacts.filter((contact) => showArchivedContacts || !contact.isArchived);
+
   return (
     <div className="space-y-4">
-      <PermissionGate user={user} permission="CUSTOMERS_UPDATE">
-        <ContactDialog customerId={customerId} />
-      </PermissionGate>
-      {contacts.map((contact) => (
+      <div className="flex items-center gap-2">
+        <PermissionGate user={user} permission="CUSTOMERS_UPDATE">
+          <ContactDialog customerId={customerId} />
+        </PermissionGate>
+        <Button type="button" size="sm" variant="outline" onClick={() => setShowArchivedContacts((v) => !v)}>
+          {showArchivedContacts ? "Masquer les archives" : "Afficher les archives"}
+        </Button>
+      </div>
+      {visibleContacts.map((contact) => (
         <Card key={contact.id}>
           <CardContent className="flex items-start justify-between pt-6">
             <div>
               <p className="font-medium">
                 {contact.firstName} {contact.lastName}
                 {contact.isPrimary && <Badge className="ml-2" variant="secondary">Principal</Badge>}
+                {contact.isArchived && <Badge className="ml-2" variant="outline">Archive</Badge>}
               </p>
               <p className="text-sm text-[var(--color-muted-foreground)]">{contact.jobTitle ?? "—"}</p>
               <p className="text-sm">{contact.email ?? "—"} · {contact.phone ?? contact.mobile ?? "—"}</p>
@@ -416,15 +426,24 @@ function ContactsSection({
                   <Button size="sm" variant="outline" onClick={async () => {
                     await setPrimaryContactAction(contact.id);
                     toast.success("Contact principal défini");
-                  }}>Principal</Button>
+                  }} disabled={contact.isArchived}>Principal</Button>
                 )}
-                <Button size="sm" variant="ghost" onClick={async () => {
-                  if (!confirm("Supprimer ce contact ?")) return;
-                  await deleteCustomerContactAction(contact.id);
-                  toast.success("Contact supprimé");
-                }}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {contact.isArchived ? (
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    const result = await reactivateCustomerContactAction(contact.id);
+                    if (result.success) toast.success("Contact réactive");
+                  }}>
+                    Reactiver
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="ghost" onClick={async () => {
+                    if (!confirm("Archiver le contact ?")) return;
+                    await deleteCustomerContactAction(contact.id);
+                    toast.success("Contact archive");
+                  }}>
+                    Archiver le contact
+                  </Button>
+                )}
               </div>
             </PermissionGate>
           </CardContent>

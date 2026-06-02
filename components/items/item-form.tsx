@@ -15,17 +15,21 @@ import { MarginBadge } from "@/components/items/item-badges";
 import { computeItemPricing, formatCurrency, formatVatRate } from "@/lib/pricing";
 import { createItemAction, updateItemAction } from "@/server/actions/item.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
+import { createItemCategoryAction } from "@/server/actions/item-category.actions";
+import { createSupplierAction } from "@/server/actions/supplier.actions";
 
 type ItemFormProps = {
   mode: "create" | "edit";
   item?: {
     type?: string;
     status?: string;
+    itemNumber?: string;
     name?: string;
     sku?: string | null;
     description?: string | null;
     shortDescription?: string | null;
     categoryId?: string | null;
+    supplierId?: string | null;
     unitId?: string | null;
     imageUrl?: string | null;
     barcode?: string | null;
@@ -45,14 +49,21 @@ type ItemFormProps = {
   categories: ItemCategory[];
   units: ItemUnit[];
   tags: ItemTag[];
+  suppliers: { id: string; name: string; supplierNumber: string }[];
 };
 
-export function ItemForm({ mode, item, itemId, categories, units, tags }: ItemFormProps) {
+export function ItemForm({ mode, item, itemId, categories, units, tags, suppliers }: ItemFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState(item?.type ?? "SERVICE");
   const [status, setStatus] = useState(item?.status ?? "ACTIVE");
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
+  const [supplierId, setSupplierId] = useState(item?.supplierId ?? "");
+  const [localSuppliers, setLocalSuppliers] = useState(suppliers);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newFamilyName, setNewFamilyName] = useState("");
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [localCategories, setLocalCategories] = useState(categories);
   const [unitId, setUnitId] = useState(item?.unitId ?? "");
   const [recurringInterval, setRecurringInterval] = useState(item?.recurringInterval ?? "");
   const [isRecurring, setIsRecurring] = useState(item?.isRecurring ?? false);
@@ -73,11 +84,24 @@ export function ItemForm({ mode, item, itemId, categories, units, tags }: ItemFo
     [saleHT, purchaseHT, vatRate],
   );
 
+  const families = useMemo(
+    () => localCategories.filter((c) => !c.parentId),
+    [localCategories],
+  );
+  const selectedCategory = localCategories.find((c) => c.id === categoryId);
+  const [familyId, setFamilyId] = useState(selectedCategory?.parentId ?? "");
+  const visibleCategories = useMemo(
+    () => localCategories.filter((c) => (familyId ? c.parentId === familyId : !c.parentId)),
+    [localCategories, familyId],
+  );
+
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     formData.set("type", type);
     formData.set("status", status);
     formData.set("categoryId", categoryId);
+    formData.set("familyId", familyId);
+    formData.set("supplierId", supplierId);
     formData.set("unitId", unitId);
     formData.set("isRecurring", String(isRecurring));
     formData.set("isStockable", String(isStockable));
@@ -100,6 +124,49 @@ export function ItemForm({ mode, item, itemId, categories, units, tags }: ItemFo
     } else {
       toast.error(result.error ?? "Erreur");
     }
+  }
+
+  async function handleCreateCategory(name: string, parentId = "") {
+    if (!name.trim()) return;
+    const fd = new FormData();
+    fd.set("name", name.trim());
+    fd.set("parentId", parentId);
+    const result = await createItemCategoryAction(fd);
+    if (!result.success) {
+      toast.error(result.error ?? "Impossible de créer la catégorie");
+      return;
+    }
+    const createdCategory = result.category;
+    if (!createdCategory) {
+      toast.error("Categorie invalide");
+      return;
+    }
+    setLocalCategories((prev) => [...prev, createdCategory]);
+    if (parentId) {
+      setCategoryId(createdCategory.id);
+    } else {
+      setFamilyId(createdCategory.id);
+    }
+    toast.success("Catégorie créée");
+  }
+
+  async function handleCreateSupplier() {
+    const name = newSupplierName.trim();
+    if (!name) return;
+    const fd = new FormData();
+    fd.set("name", name);
+    fd.set("type", "COMPANY");
+    fd.set("status", "ACTIVE");
+    const result = await createSupplierAction(fd);
+    if (!result.success || !result.supplierId) {
+      toast.error(result.error ?? "Impossible de créer le fournisseur");
+      return;
+    }
+    const newSupplier = { id: result.supplierId, name, supplierNumber: "Nouveau" };
+    setLocalSuppliers((prev) => [...prev, newSupplier]);
+    setSupplierId(newSupplier.id);
+    setNewSupplierName("");
+    toast.success("Fournisseur créé et sélectionné");
   }
 
   return (
@@ -133,6 +200,10 @@ export function ItemForm({ mode, item, itemId, categories, units, tags }: ItemFo
             <Input id="name" name="name" defaultValue={item?.name ?? ""} required />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="itemNumber">Code article</Label>
+            <Input id="itemNumber" name="itemNumber" defaultValue={item?.itemNumber ?? ""} placeholder="Auto si vide" />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="sku">Référence SKU</Label>
             <Input id="sku" name="sku" defaultValue={item?.sku ?? ""} />
           </div>
@@ -159,15 +230,49 @@ export function ItemForm({ mode, item, itemId, categories, units, tags }: ItemFo
         <CardHeader><CardTitle>Classification</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
+            <Label>Famille</Label>
+            <Select value={familyId} onValueChange={(value) => { setFamilyId(value); setCategoryId(""); }}>
+              <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+              <SelectContent>
+                {families.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Input value={newFamilyName} onChange={(e) => setNewFamilyName(e.target.value)} placeholder="Nouvelle famille" />
+              <Button type="button" variant="outline" onClick={() => { void handleCreateCategory(newFamilyName); setNewFamilyName(""); }}>Créer</Button>
+            </div>
+          </div>
+          <div className="space-y-2">
             <Label>Catégorie</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
-                {categories.map((c) => (
+                {visibleCategories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex gap-2">
+              <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Nouvelle catégorie" />
+              <Button type="button" variant="outline" onClick={() => { void handleCreateCategory(newCategoryName, familyId); setNewCategoryName(""); }} disabled={!familyId}>Créer</Button>
+            </div>
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Fournisseur</Label>
+            <Select value={supplierId} onValueChange={setSupplierId}>
+              <SelectTrigger><SelectValue placeholder="Choisir un fournisseur..." /></SelectTrigger>
+              <SelectContent>
+                {localSuppliers.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} placeholder="Nouveau fournisseur" />
+              <Button type="button" variant="outline" onClick={() => void handleCreateSupplier()}>Créer et sélectionner</Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Unité</Label>

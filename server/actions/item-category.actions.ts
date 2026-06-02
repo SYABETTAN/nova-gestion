@@ -23,12 +23,17 @@ export async function createItemCategoryAction(formData: FormData) {
         name: parsed.data.name,
       },
     },
-    update: { description: parsed.data.description, color: parsed.data.color },
+    update: {
+      description: parsed.data.description,
+      color: parsed.data.color,
+      parentId: parsed.data.parentId || null,
+    },
     create: {
       organizationId: user.organizationId,
       name: parsed.data.name,
       description: parsed.data.description,
       color: parsed.data.color,
+      parentId: parsed.data.parentId || null,
     },
   });
 

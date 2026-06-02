@@ -31,7 +31,7 @@ export function buildSupplierWhere(
       : {}),
     ...(filters.preferred === "true" ? { isPreferred: true } : {}),
     ...(filters.city
-      ? { addresses: { some: { city: { contains: filters.city } } } }
+      ? { addresses: { some: { city: { contains: filters.city, mode: "insensitive" } } } }
       : {}),
     ...(filters.tagId
       ? { tagAssignments: { some: { tagId: filters.tagId } } }
@@ -39,14 +39,28 @@ export function buildSupplierWhere(
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { supplierNumber: { contains: filters.q } },
-            { email: { contains: filters.q } },
-            { phone: { contains: filters.q } },
-            { siret: { contains: filters.q } },
-            { vatNumber: { contains: filters.q } },
-            { legalName: { contains: filters.q } },
-            { notes: { contains: filters.q } },
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { displayName: { contains: filters.q, mode: "insensitive" } },
+            { supplierNumber: { contains: filters.q, mode: "insensitive" } },
+            { email: { contains: filters.q, mode: "insensitive" } },
+            { phone: { contains: filters.q, mode: "insensitive" } },
+            { siret: { contains: filters.q, mode: "insensitive" } },
+            { vatNumber: { contains: filters.q, mode: "insensitive" } },
+            { legalName: { contains: filters.q, mode: "insensitive" } },
+            { notes: { contains: filters.q, mode: "insensitive" } },
+            {
+              contacts: {
+                some: {
+                  OR: [
+                    { firstName: { contains: filters.q, mode: "insensitive" } },
+                    { lastName: { contains: filters.q, mode: "insensitive" } },
+                    { email: { contains: filters.q, mode: "insensitive" } },
+                    { phone: { contains: filters.q, mode: "insensitive" } },
+                    { mobile: { contains: filters.q, mode: "insensitive" } },
+                  ],
+                },
+              },
+            },
           ],
         }
       : {}),

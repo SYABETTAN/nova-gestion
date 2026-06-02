@@ -201,7 +201,7 @@ export function SuppliersPageClient({
       <form method="get" className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-6">
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="q">Recherche</Label>
-          <Input id="q" name="q" defaultValue={filters.q ?? ""} placeholder="Nom, email, SIRET..." />
+          <Input id="q" name="q" defaultValue={filters.q ?? ""} placeholder="Nom, societe, email, telephone, numero fournisseur..." />
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Statut</Label>

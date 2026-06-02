@@ -3,6 +3,12 @@ import type { SupplierInvoiceFilterInput } from "@/lib/supplier-invoice-validato
 import { prisma } from "@/lib/prisma";
 import { isSupplierInvoiceOverdue } from "@/lib/supplier-invoice-status";
 
+function safeDate(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 const defaultInclude = {
   supplier: { select: { id: true, name: true, supplierNumber: true } },
   expenseCategory: true,
@@ -13,6 +19,10 @@ export function buildSupplierInvoiceWhere(
   filters: Partial<SupplierInvoiceFilterInput>,
 ): Prisma.SupplierInvoiceWhereInput {
   const archivedFilter = filters.archived ?? "false";
+  const issueDateFrom = safeDate(filters.issueDateFrom);
+  const issueDateTo = safeDate(filters.issueDateTo);
+  const dueDateFrom = safeDate(filters.dueDateFrom);
+  const dueDateTo = safeDate(filters.dueDateTo);
 
   return {
     organizationId,
@@ -25,19 +35,19 @@ export function buildSupplierInvoiceWhere(
     ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
     ...(filters.expenseCategoryId ? { expenseCategoryId: filters.expenseCategoryId } : {}),
     ...(filters.type ? { type: filters.type as Prisma.EnumSupplierInvoiceTypeFilter["equals"] } : {}),
-    ...(filters.issueDateFrom || filters.issueDateTo
+    ...(issueDateFrom || issueDateTo
       ? {
           issueDate: {
-            ...(filters.issueDateFrom ? { gte: new Date(filters.issueDateFrom) } : {}),
-            ...(filters.issueDateTo ? { lte: new Date(filters.issueDateTo) } : {}),
+            ...(issueDateFrom ? { gte: issueDateFrom } : {}),
+            ...(issueDateTo ? { lte: issueDateTo } : {}),
           },
         }
       : {}),
-    ...(filters.dueDateFrom || filters.dueDateTo
+    ...(dueDateFrom || dueDateTo
       ? {
           dueDate: {
-            ...(filters.dueDateFrom ? { gte: new Date(filters.dueDateFrom) } : {}),
-            ...(filters.dueDateTo ? { lte: new Date(filters.dueDateTo) } : {}),
+            ...(dueDateFrom ? { gte: dueDateFrom } : {}),
+            ...(dueDateTo ? { lte: dueDateTo } : {}),
           },
         }
       : {}),
@@ -52,12 +62,13 @@ export function buildSupplierInvoiceWhere(
     ...(filters.q
       ? {
           OR: [
-            { supplierInvoiceNumber: { contains: filters.q } },
-            { supplierReference: { contains: filters.q } },
-            { title: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { internalNotes: { contains: filters.q } },
-            { supplier: { name: { contains: filters.q } } },
+            { supplierInvoiceNumber: { contains: filters.q, mode: "insensitive" } },
+            { supplierReference: { contains: filters.q, mode: "insensitive" } },
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { internalNotes: { contains: filters.q, mode: "insensitive" } },
+            { supplier: { name: { contains: filters.q, mode: "insensitive" } } },
+            { supplier: { supplierNumber: { contains: filters.q, mode: "insensitive" } } },
           ],
         }
       : {}),

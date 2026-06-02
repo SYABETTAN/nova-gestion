@@ -43,6 +43,7 @@ function buildItemData(data: ReturnType<typeof createItemSchema.parse>) {
       description: emptyToNull(data.description),
       shortDescription: emptyToNull(data.shortDescription),
       categoryId: emptyToNull(data.categoryId),
+      supplierId: emptyToNull(data.supplierId),
       unitId: emptyToNull(data.unitId),
       imageUrl: emptyToNull(data.imageUrl),
       barcode: emptyToNull(data.barcode),
@@ -108,6 +109,16 @@ export async function getItemTagsAction() {
   return getItemTagsQuery(user.organizationId);
 }
 
+export async function getItemSuppliersAction() {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return prisma.supplier.findMany({
+    where: { organizationId: user.organizationId, isArchived: false, status: { not: "ARCHIVED" } },
+    select: { id: true, name: true, supplierNumber: true },
+    orderBy: { name: "asc" },
+  });
+}
+
 export async function createItemAction(formData: FormData) {
   const user = await requireAuth();
   requirePermission(user, "ITEMS_CREATE");
@@ -131,7 +142,16 @@ export async function createItemAction(formData: FormData) {
     if (existing) return { success: false, error: "Cette référence SKU existe déjà" };
   }
 
-  const itemNumber = await generateNextNumber(user.organizationId, "ITEM", user.id);
+  const customItemNumber = data.itemNumber?.trim() || null;
+  if (customItemNumber) {
+    const existingNumber = await prisma.item.findFirst({
+      where: { organizationId: user.organizationId, itemNumber: customItemNumber },
+      select: { id: true },
+    });
+    if (existingNumber) return { success: false, error: "Ce code article existe déjà" };
+  }
+
+  const itemNumber = customItemNumber ?? (await generateNextNumber(user.organizationId, "ITEM", user.id));
   const itemData = buildItemData(data);
 
   const item = await prisma.$transaction(async (tx) => {
@@ -206,6 +226,19 @@ export async function updateItemAction(itemId: string, formData: FormData) {
     if (dup) return { success: false, error: "Cette référence SKU existe déjà" };
   }
 
+  const customItemNumber = data.itemNumber?.trim() || null;
+  if (customItemNumber && customItemNumber !== existing.itemNumber) {
+    const dupNumber = await prisma.item.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        itemNumber: customItemNumber,
+        NOT: { id: itemId },
+      },
+      select: { id: true },
+    });
+    if (dupNumber) return { success: false, error: "Ce code article existe déjà" };
+  }
+
   const itemData = buildItemData(data);
   const priceChanged =
     !moneyEq(existing.salePriceExcludingTax, itemData.salePriceExcludingTax) ||
@@ -215,7 +248,10 @@ export async function updateItemAction(itemId: string, formData: FormData) {
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.item.update({
       where: { id: itemId },
-      data: itemData,
+      data: {
+        ...itemData,
+        ...(customItemNumber ? { itemNumber: customItemNumber } : {}),
+      },
     });
 
     await tx.itemTagAssignment.deleteMany({ where: { itemId } });
