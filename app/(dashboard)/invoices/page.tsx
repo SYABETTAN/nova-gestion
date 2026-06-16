@@ -1,6 +1,7 @@
 import { InvoicesPageClient } from "@/components/invoices/invoices-page-client";
 import { requireAuth } from "@/lib/auth";
-import { getCustomersForInvoiceFilterAction, getInvoiceStatsAction, listInvoicesAction } from "@/server/actions/invoice.actions";
+import { getCustomerOptionByIdQuery } from "@/lib/customers";
+import { getInvoiceStatsAction, listInvoicesAction } from "@/server/actions/invoice.actions";
 
 type PageProps = { searchParams: Promise<Record<string, string | undefined>> };
 
@@ -8,16 +9,18 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
   try {
     const user = await requireAuth();
     const params = await searchParams;
-    const [list, stats, customers] = await Promise.all([
+    const [list, stats, initialCustomerOption] = await Promise.all([
       listInvoicesAction(params),
       getInvoiceStatsAction(),
-      getCustomersForInvoiceFilterAction(),
+      params.customerId
+        ? getCustomerOptionByIdQuery(user.organizationId, params.customerId)
+        : Promise.resolve(null),
     ]);
     return (
       <InvoicesPageClient
         user={user}
         invoices={list.invoices}
-        customers={customers}
+        initialCustomerOption={initialCustomerOption ?? null}
         stats={stats}
         total={list.total}
         page={list.page}

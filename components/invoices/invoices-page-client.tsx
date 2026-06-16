@@ -13,6 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CustomerFilterField } from "@/components/shared/customer-filter-field";
+import type { CustomerSelectOption } from "@/components/shared/customer-search-select";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { InvoicePaymentStatusBadge, InvoiceStatusBadge, InvoiceTypeBadge } from "@/components/invoices/invoice-badges";
 import { formatCurrency } from "@/lib/pricing";
@@ -53,7 +55,7 @@ type Stats = {
 export function InvoicesPageClient({
   user,
   invoices,
-  customers,
+  initialCustomerOption,
   stats,
   total,
   page,
@@ -62,7 +64,7 @@ export function InvoicesPageClient({
 }: {
   user: SessionUser;
   invoices: InvoiceRow[];
-  customers: { id: string; name: string }[];
+  initialCustomerOption: CustomerSelectOption | null;
   stats: Stats;
   total: number;
   page: number;
@@ -168,13 +170,10 @@ export function InvoicesPageClient({
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerId">Client</Label>
-              <select id="customerId" name="customerId" defaultValue={filters.customerId ?? ""} className="flex h-10 w-full rounded-md border px-3 py-2 text-sm">
-                <option value="">Tous</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
+            <CustomerFilterField
+              initialCustomerId={filters.customerId}
+              initialOption={initialCustomerOption}
+            />
             <div className="space-y-2">
               <Label htmlFor="issueDateFrom">Date début</Label>
               <Input id="issueDateFrom" name="issueDateFrom" type="date" defaultValue={filters.issueDateFrom ?? ""} />

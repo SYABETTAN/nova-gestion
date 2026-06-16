@@ -57,6 +57,8 @@ export default async function NewPaymentPage({ searchParams }: PageProps) {
     prefill.customerId,
   );
 
+  const defaultPaymentDate = new Date().toISOString().slice(0, 10);
+
   return (
     <div className="space-y-6">
       <div>
@@ -85,6 +87,7 @@ export default async function NewPaymentPage({ searchParams }: PageProps) {
       <PaymentForm
         mode="create"
         customers={customers}
+        defaultPaymentDate={defaultPaymentDate}
         prefill={prefillError ? undefined : prefill}
         disabled={Boolean(prefillError)}
       />

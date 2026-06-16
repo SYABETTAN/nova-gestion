@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { Prisma } from "@prisma/client";
 import type { PaymentFilterInput } from "@/lib/payment-validators";
 import { prisma } from "@/lib/prisma";

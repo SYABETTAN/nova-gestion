@@ -8,7 +8,7 @@ import {
   buildAutoAllocations,
   computeInvoicePaymentFields,
   getInvoiceRemainingAmount,
-} from "@/lib/payment-calculations";
+} from "@/lib/payment-math";
 import {
   calculateQuoteLineTotals,
   calculateQuoteTotals,

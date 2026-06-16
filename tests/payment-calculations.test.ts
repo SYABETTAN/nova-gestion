@@ -5,7 +5,7 @@ import {
   computeInvoicePaymentFields,
   getInvoiceRemainingAmount,
   getPaymentRemainingAmount,
-} from "@/lib/payment-calculations";
+} from "@/lib/payment-math";
 
 describe("payment calculations", () => {
   it("calcule le reste dû facture", () => {

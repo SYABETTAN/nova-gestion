@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePaymentStatusFromAmounts } from "@/lib/payment-status";
-import { getPaymentRemainingAmount } from "@/lib/payment-calculations";
+import { getPaymentRemainingAmount } from "@/lib/payment-math";
 
 describe("payment allocation status", () => {
   it("paiement non alloué est CONFIRMED", () => {

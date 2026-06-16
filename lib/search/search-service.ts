@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { SearchEntityType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { moneyToNumber } from "@/lib/money";
@@ -42,7 +44,7 @@ export async function loadFavoriteKeys(
 
 function containsFilter(q: string) {
   const term = buildPrismaContains(q);
-  return { contains: term };
+  return { contains: term, mode: "insensitive" as const };
 }
 
 export async function searchCustomers(
@@ -66,7 +68,19 @@ export async function searchCustomers(
         { notes: q },
         { contacts: { some: { OR: [{ mobile: q }, { phone: q }] } } },
         { tagAssignments: { some: { tag: { name: q } } } },
-        { addresses: { some: { city: q } } },
+        {
+          addresses: {
+            some: {
+              OR: [
+                { city: q },
+                { addressLine1: q },
+                { addressLine2: q },
+                { postalCode: q },
+                { country: q },
+              ],
+            },
+          },
+        },
       ],
     },
     include: { addresses: { where: { isDefault: true }, take: 1 } },

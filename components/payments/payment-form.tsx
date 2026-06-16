@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { buildAutoAllocations } from "@/lib/payment-calculations";
+import { buildAutoAllocations } from "@/lib/payment-math";
 import { money, moneyAdd, moneyToNumber, type MoneyInput } from "@/lib/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payment-status";
 import { formatCurrency } from "@/lib/pricing";
@@ -44,6 +44,7 @@ type OpenInvoice = {
 type PaymentFormProps = {
   mode: "create" | "edit";
   customers: CustomerOption[];
+  defaultPaymentDate?: string;
   disabled?: boolean;
   prefill?: {
     customerId?: string;
@@ -74,14 +75,21 @@ type PaymentFormProps = {
   };
 };
 
-export function PaymentForm({ mode, customers, prefill, payment, disabled }: PaymentFormProps) {
+export function PaymentForm({
+  mode,
+  customers,
+  prefill,
+  payment,
+  defaultPaymentDate,
+  disabled,
+}: PaymentFormProps) {
   const router = useRouter();
   const hasInvoicePrefill = Boolean(mode === "create" && prefill?.invoiceId);
   const [customerId, setCustomerId] = useState(prefill?.customerId ?? payment?.customerId ?? "");
   const [paymentDate, setPaymentDate] = useState(
     payment?.paymentDate
       ? new Date(payment.paymentDate).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10),
+      : (defaultPaymentDate ?? ""),
   );
   const [amount, setAmount] = useState(
     String(prefill?.amount ?? (payment?.amount != null ? moneyToNumber(payment.amount) : "")),
