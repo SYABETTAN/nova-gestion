@@ -23,6 +23,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:production": "SEED_DEV_DATA=false tsx prisma/seed.ts",
     "db:seed:dev": "SEED_DEV_DATA=true tsx prisma/seed.ts",
+    "import:esther-real-data": "tsx scripts/import-esther-real-data.ts",
+    "seed:esther-real-data": "tsx scripts/import-esther-real-data.ts",
     "org:create": "tsx scripts/create-organization.ts",
     "db:reset": "prisma migrate reset --force",
     "test:e2e": "playwright test",
