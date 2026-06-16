@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { isProduction } from "@/lib/env";
 
+const emptyToUndefined = (value: unknown) =>
+  value === "" || value === undefined ? undefined : value;
+
 const storageSchema = z.object({
-  STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
-  STORAGE_PATH: z.string().optional(),
+  STORAGE_PROVIDER: z.preprocess(
+    emptyToUndefined,
+    z.enum(["local", "s3"]).default("local"),
+  ),
+  STORAGE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().optional(),
   S3_BUCKET: z.string().optional(),
@@ -54,9 +60,13 @@ export function getStorageConfig(): StorageConfig {
     }
   }
 
+  const localPath =
+    env.STORAGE_PATH ??
+    (provider === "local" && isProduction() ? "/tmp/uploads" : undefined);
+
   cached = {
     provider,
-    localPath: env.STORAGE_PATH,
+    localPath,
     s3Endpoint: env.S3_ENDPOINT,
     s3Region: env.S3_REGION,
     s3Bucket: env.S3_BUCKET,
