@@ -79,7 +79,12 @@ export function GlobalCommandPalette({
       setLoading(true);
       try {
         const result = await globalSearchAction({ query: debouncedQuery });
-        if (!cancelled) setData(result);
+        if (!cancelled) {
+          setData(result);
+          if (result.error) toast.error(result.error);
+        }
+      } catch {
+        if (!cancelled) toast.error("La recherche est temporairement indisponible.");
       } finally {
         if (!cancelled) setLoading(false);
       }

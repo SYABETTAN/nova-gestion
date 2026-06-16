@@ -23,13 +23,37 @@ import {
   supplierInvoiceStatusLabel,
 } from "@/lib/search/search-formatters";
 import type { SessionUser } from "@/lib/permissions";
-import { getCachedEnabledModules } from "@/lib/org-cache";
+import { loadEnabledModulesForSearch } from "@/lib/org-cache";
 
 const DEFAULT_LIMIT_PER_GROUP = 5;
 const DEFAULT_GLOBAL_LIMIT = 50;
 
+const ALL_SEARCH_TYPES: SearchEntityType[] = [
+  "CUSTOMER",
+  "ITEM",
+  "QUOTE",
+  "INVOICE",
+  "PAYMENT",
+  "REMINDER",
+  "SUPPLIER",
+  "SUPPLIER_INVOICE",
+  "ACCOUNTING_ENTRY",
+  "DOCUMENT",
+  "EXPORT_JOB",
+  "SETTING",
+  "AUDIT_LOG",
+];
+
+function searchLog(event: string, payload: Record<string, unknown>) {
+  console.info(`[global-search] ${event}`, payload);
+}
+
+function searchLogError(event: string, payload: Record<string, unknown>) {
+  console.error(`[global-search] ${event}`, payload);
+}
+
 export async function loadEnabledModules(organizationId: string): Promise<Set<string>> {
-  return getCachedEnabledModules(organizationId);
+  return loadEnabledModulesForSearch(organizationId);
 }
 
 export async function loadFavoriteKeys(
@@ -102,6 +126,26 @@ export async function searchCustomers(
       metadata: { numberField: "customerNumber", numberValue: c.customerNumber },
     };
   });
+}
+
+async function safeSearchByType(
+  type: SearchEntityType,
+  organizationId: string,
+  query: string,
+  limit: number,
+): Promise<SearchResult[]> {
+  try {
+    return await searchByType(type, organizationId, query, limit);
+  } catch (error) {
+    searchLogError("entity_search_failed", {
+      type,
+      organizationId,
+      query,
+      message: error instanceof Error ? error.message : String(error),
+      ...(error instanceof Error && "code" in error ? { code: (error as { code?: string }).code } : {}),
+    });
+    return [];
+  }
 }
 
 export async function searchItems(organizationId: string, query: string, limit = 5): Promise<SearchResult[]> {
@@ -560,11 +604,20 @@ export async function globalSearch(
   options?: Partial<GlobalSearchOptions>,
 ): Promise<GlobalSearchResponse> {
   const organizationId = options?.organizationId ?? user.organizationId;
-  const enabledModules = options?.enabledModules ?? (await loadEnabledModules(organizationId));
-  const favoriteKeys = options?.favoriteKeys ?? (await loadFavoriteKeys(organizationId, user.id));
+  const enabledModules =
+    options?.enabledModules ?? (await loadEnabledModulesForSearch(organizationId));
+  const favoriteKeys =
+    options?.favoriteKeys ?? (await loadFavoriteKeys(organizationId, user.id));
   const limitPerGroup = options?.limitPerGroup ?? DEFAULT_LIMIT_PER_GROUP;
   const globalLimit = options?.globalLimit ?? DEFAULT_GLOBAL_LIMIT;
   const normalized = normalizeSearchQuery(query);
+
+  searchLog("start", {
+    query,
+    organizationId,
+    types: options?.types ?? "all",
+    userId: user.id,
+  });
 
   const quickActions = getQuickActions(user, enabledModules, query);
   const actionResults = quickActionsToResults(quickActions);
@@ -573,42 +626,31 @@ export async function globalSearch(
     return {
       query: "",
       groups: [
-        { type: "ACTION", label: SEARCH_GROUP_LABELS.ACTION, results: actionResults.slice(0, limitPerGroup) },
+        {
+          type: "ACTION",
+          label: SEARCH_GROUP_LABELS.ACTION,
+          results: actionResults.slice(0, limitPerGroup),
+        },
       ],
       totalCount: actionResults.length,
     };
   }
 
-  const typesToSearch: SearchEntityType[] = [
-    "CUSTOMER",
-    "ITEM",
-    "QUOTE",
-    "INVOICE",
-    "PAYMENT",
-    "REMINDER",
-    "SUPPLIER",
-    "SUPPLIER_INVOICE",
-    "ACCOUNTING_ENTRY",
-    "DOCUMENT",
-    "EXPORT_JOB",
-    "SETTING",
-    "AUDIT_LOG",
-  ];
+  const requestedTypes = options?.types?.length ? options.types : ALL_SEARCH_TYPES;
+  const typesToSearch = requestedTypes.filter((type) =>
+    canSearchEntityType(user, type, enabledModules),
+  );
 
   const allResults: SearchResult[] = [...actionResults];
   const term = buildPrismaContains(query);
-  const searchTasks: Promise<void>[] = [];
+  const searchTasks = typesToSearch.map(async (type) => {
+    const rows = await safeSearchByType(type, organizationId, term, limitPerGroup);
+    allResults.push(...rows);
+    return rows.length;
+  });
 
-  for (const type of typesToSearch) {
-    if (!canSearchEntityType(user, type, enabledModules)) continue;
-    searchTasks.push(
-      searchByType(type, organizationId, term, limitPerGroup).then((rows) => {
-        allResults.push(...rows);
-      }),
-    );
-  }
-
-  await Promise.all(searchTasks);
+  const counts = await Promise.all(searchTasks);
+  const entityCount = counts.reduce((sum, n) => sum + n, 0);
 
   const ranked = applyRanking(allResults, query, favoriteKeys).slice(0, globalLimit);
   const groups: SearchResultGroup[] = [];
@@ -620,6 +662,14 @@ export async function globalSearch(
 
   const entityResults = ranked.filter((r) => r.type !== "ACTION");
   groups.push(...groupSearchResults(entityResults, limitPerGroup));
+
+  searchLog("complete", {
+    query,
+    organizationId,
+    types: typesToSearch,
+    entityCount,
+    totalCount: ranked.length,
+  });
 
   return {
     query,

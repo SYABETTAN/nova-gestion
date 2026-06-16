@@ -17,24 +17,43 @@ import {
   searchHistoryInputSchema,
   searchResultClickInputSchema,
 } from "@/lib/search/search-validators";
-import { isQueryLongEnough } from "@/lib/search/search-utils";
+import { isQueryLongEnough, parseSearchEntityType } from "@/lib/search/search-utils";
 import { getQuickActions } from "@/lib/search/quick-actions";
 import { prisma } from "@/lib/prisma";
 import type { SearchEntityType } from "@prisma/client";
 
 export async function globalSearchAction(input: Record<string, unknown>) {
-  const user = await requireAuth();
-  requirePermission(user, "GLOBAL_SEARCH_USE");
-  const data = globalSearchInputSchema.parse(input);
-  const enabledModules = await loadEnabledModules(user.organizationId);
-  const favoriteKeys = await loadFavoriteKeys(user.organizationId, user.id);
-  const result = await globalSearch(user, data.query ?? "", {
-    enabledModules,
-    favoriteKeys,
-    limitPerGroup: 5,
-    globalLimit: data.limit ?? 50,
-  });
-  return result;
+  const query = String(input.query ?? "");
+  try {
+    const user = await requireAuth();
+    requirePermission(user, "GLOBAL_SEARCH_USE");
+    const data = globalSearchInputSchema.parse(input);
+    const types = data.types
+      ?.map((t) => parseSearchEntityType(t))
+      .filter((t): t is SearchEntityType => t != null);
+
+    const enabledModules = await loadEnabledModules(user.organizationId);
+    const favoriteKeys = await loadFavoriteKeys(user.organizationId, user.id);
+    return await globalSearch(user, data.query ?? "", {
+      enabledModules,
+      favoriteKeys,
+      limitPerGroup: 5,
+      globalLimit: data.limit ?? 50,
+      types: types?.length ? types : undefined,
+    });
+  } catch (error) {
+    console.error("[global-search] action_failed", {
+      query,
+      message: error instanceof Error ? error.message : String(error),
+      ...(error instanceof Error && "code" in error ? { code: (error as { code?: string }).code } : {}),
+    });
+    return {
+      query,
+      groups: [],
+      totalCount: 0,
+      error: "La recherche est temporairement indisponible. Réessayez dans un instant.",
+    };
+  }
 }
 
 export async function getSearchInitialStateAction() {

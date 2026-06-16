@@ -16,6 +16,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["tests/setup/server-only.mock.ts"],
   },
   resolve: {
     alias: {

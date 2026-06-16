@@ -3,6 +3,7 @@ import {
   findExactMatch,
   isQueryLongEnough,
   normalizeSearchQuery,
+  parseSearchEntityType,
 } from "@/lib/search/search-utils";
 
 describe("search normalization", () => {
@@ -30,5 +31,12 @@ describe("search normalization", () => {
       "FAC-2026-0042",
     );
     expect(match?.title).toBe("FAC-2026-0042");
+  });
+
+  it("parseSearchEntityType accepte CUSTOMER", () => {
+    expect(parseSearchEntityType("CUSTOMER")).toBe("CUSTOMER");
+    expect(parseSearchEntityType("all")).toBeNull();
+    expect(parseSearchEntityType(undefined)).toBeNull();
+    expect(parseSearchEntityType("INVALID_TYPE")).toBeNull();
   });
 });

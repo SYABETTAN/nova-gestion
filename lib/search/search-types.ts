@@ -41,6 +41,7 @@ export type GlobalSearchResponse = {
   query: string;
   groups: SearchResultGroup[];
   totalCount: number;
+  error?: string;
 };
 
 export type QuickAction = {

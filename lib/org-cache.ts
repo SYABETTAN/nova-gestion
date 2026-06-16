@@ -32,6 +32,13 @@ function isTestRuntime(): boolean {
   return process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 }
 
+/** Feature flags par organisation — sans cache (Server Actions, recherche). */
+export async function loadEnabledModulesForSearch(
+  organizationId: string,
+): Promise<Set<string>> {
+  return loadEnabledModulesUncached(organizationId);
+}
+
 /** Feature flags par organisation — cache 5 min, clé tenant-scoped. */
 export function getCachedEnabledModules(organizationId: string) {
   if (isTestRuntime()) {

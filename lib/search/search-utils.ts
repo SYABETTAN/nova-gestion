@@ -1,3 +1,21 @@
+import type { SearchEntityType } from "@prisma/client";
+
+const SEARCH_ENTITY_TYPES = new Set<string>([
+  "CUSTOMER",
+  "ITEM",
+  "QUOTE",
+  "INVOICE",
+  "PAYMENT",
+  "REMINDER",
+  "SUPPLIER",
+  "SUPPLIER_INVOICE",
+  "ACCOUNTING_ENTRY",
+  "DOCUMENT",
+  "EXPORT_JOB",
+  "SETTING",
+  "AUDIT_LOG",
+]);
+
 export function normalizeSearchQuery(query: string): string {
   return query
     .trim()
@@ -24,6 +42,12 @@ export function favoriteKey(entityType: string, entityId: string): string {
 
 export function isQueryLongEnough(query: string, min = 2): boolean {
   return normalizeSearchQuery(query).length >= min;
+}
+
+export function parseSearchEntityType(value?: string | null): SearchEntityType | null {
+  if (!value || value === "all") return null;
+  if (SEARCH_ENTITY_TYPES.has(value)) return value as SearchEntityType;
+  return null;
 }
 
 export function buildPrismaContains(query: string): string {
