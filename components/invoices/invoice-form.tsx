@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
@@ -11,10 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { InvoiceTotals } from "@/components/invoices/invoice-totals";
+import { CustomerSearchSelect } from "@/components/shared/customer-search-select";
 import { calculateInvoiceTotals } from "@/lib/invoice-calculations";
+import { formatCurrency, formatVatRate } from "@/lib/pricing";
 import { createInvoiceAction, updateInvoiceAction } from "@/server/actions/invoice.actions";
+import { getCustomerForInvoiceFormAction } from "@/server/actions/customer.actions";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
 import { SELECT_NONE, formOptionalValue, optionalSelectId } from "@/lib/select-constants";
 
@@ -66,6 +70,7 @@ type InvoiceFormProps = {
   customers: CustomerOption[];
   items: ItemOption[];
   organization: OrgDefaults | null;
+  initialCustomerId?: string;
   invoice?: {
     id: string;
     status: InvoiceStatus;
@@ -130,7 +135,7 @@ function newLine(position: number, partial?: Partial<FormLine>): FormLine {
   };
 }
 
-export function InvoiceForm({ mode, customers, items, organization, invoice }: InvoiceFormProps) {
+export function InvoiceForm({ mode, customers, items, organization, invoice, initialCustomerId }: InvoiceFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [invoiceType, setInvoiceType] = useState(invoice?.type ?? "STANDARD");
@@ -138,7 +143,12 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
   const today = toDateInput(new Date());
   const defaultDue = toDateInput(new Date(Date.now() + 30 * 86400000));
 
-  const [customerId, setCustomerId] = useState(invoice?.customerId ?? customers[0]?.id ?? "");
+  const [customerId, setCustomerId] = useState(
+    invoice?.customerId ?? initialCustomerId ?? customers[0]?.id ?? "",
+  );
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(
+    customers.find((c) => c.id === (invoice?.customerId ?? initialCustomerId ?? customers[0]?.id)) ?? null,
+  );
   const [customerContactId, setCustomerContactId] = useState(
     optionalSelectId(invoice?.customerContactId),
   );
@@ -156,7 +166,20 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
   const [otherFees, setOtherFees] = useState(moneyToNumber(invoice?.otherFeesExcludingTax ?? 0));
   const [amountPaid, setAmountPaid] = useState(moneyToNumber(invoice?.amountPaid ?? 0));
 
-  const selectedCustomer = customers.find((c) => c.id === customerId);
+  useEffect(() => {
+    if (!customerId) {
+      setSelectedCustomer(null);
+      return;
+    }
+    const cached = customers.find((c) => c.id === customerId);
+    if (cached) {
+      setSelectedCustomer(cached);
+      return;
+    }
+    getCustomerForInvoiceFormAction(customerId).then((customer) => {
+      if (customer) setSelectedCustomer(customer);
+    });
+  }, [customerId, customers]);
 
   const initialLines: FormLine[] =
     invoice?.lines.map((l, i) =>
@@ -287,21 +310,24 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
       <Card>
         <CardHeader><CardTitle>Informations générales</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Client *</Label>
-            <Select
-              value={customerId}
-              onValueChange={setCustomerId}
-              disabled={mode === "edit" && invoice?.status !== "DRAFT"}
-            >
-              <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <CustomerSearchSelect
+            value={customerId}
+            onValueChange={setCustomerId}
+            disabled={mode === "edit" && invoice?.status !== "DRAFT"}
+            initialOption={
+              selectedCustomer
+                ? {
+                    id: selectedCustomer.id,
+                    name: selectedCustomer.name,
+                    displayName: null,
+                    customerNumber: "",
+                    email: null,
+                    phone: null,
+                    siret: null,
+                  }
+                : null
+            }
+          />
           <div className="space-y-2">
             <Label>Contact</Label>
             <Select value={customerContactId} onValueChange={setCustomerContactId}>
@@ -440,7 +466,7 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Lignes du devis</CardTitle>
+          <CardTitle>Lignes de facture</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Select onValueChange={addCatalogLine}>
               <SelectTrigger className="w-48"><SelectValue placeholder="Depuis catalogue" /></SelectTrigger>
@@ -558,8 +584,40 @@ export function InvoiceForm({ mode, customers, items, organization, invoice }: I
               </div>
             );
           })}
+          {lines.some((l) => l.lineType !== "SECTION" && l.lineType !== "COMMENT") && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Réf.</TableHead>
+                  <TableHead>Désignation</TableHead>
+                  <TableHead className="text-right">Qté</TableHead>
+                  <TableHead className="text-right">P.U. HT</TableHead>
+                  <TableHead className="text-right">TVA</TableHead>
+                  <TableHead className="text-right">Total HT</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lines.map((line, index) => {
+                  if (line.lineType === "SECTION" || line.lineType === "COMMENT") return null;
+                  const calc = totals.lines[index];
+                  return (
+                    <TableRow key={`summary-${line.key}`}>
+                      <TableCell className="font-mono text-xs">{line.reference || "—"}</TableCell>
+                      <TableCell>{line.name || "—"}</TableCell>
+                      <TableCell className="text-right">{line.quantity} {line.unit}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(line.unitPriceExcludingTax)}</TableCell>
+                      <TableCell className="text-right">{formatVatRate(line.vatRate)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(calc?.totalExcludingTax ?? 0)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      <Separator />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

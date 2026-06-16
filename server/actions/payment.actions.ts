@@ -298,6 +298,9 @@ export async function createPaymentAction(input: unknown) {
   revalidatePath("/payments");
   revalidatePath(`/payments/${payment.id}`);
   revalidatePath("/invoices");
+  for (const alloc of allocations) {
+    revalidatePath(`/invoices/${alloc.invoiceId}`);
+  }
   revalidatePath(`/customers/${data.customerId}`);
 
   return { success: true as const, paymentId: payment.id };

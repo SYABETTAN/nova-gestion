@@ -19,6 +19,9 @@ import { formatCurrency, formatVatRate } from "@/lib/pricing";
 import type { SessionUser } from "@/lib/permissions";
 import type { MoneyInput } from "@/lib/money";
 import { formatDateShort } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ItemsSalesPanel } from "@/components/items/items-sales-panel";
+import type { ItemSalesReport, ItemStockSummary } from "@/lib/item-sales";
 import { archiveItemAction, exportItemsCsvAction, reactivateItemAction } from "@/server/actions/item.actions";
 
 type ItemRow = {
@@ -53,6 +56,7 @@ type Stats = {
 type ItemsPageClientProps = {
   user: SessionUser;
   items: ItemRow[];
+  stockSummaries?: Record<string, ItemStockSummary>;
   categories: ItemCategory[];
   tags: ItemTag[];
   stats: Stats;
@@ -60,9 +64,24 @@ type ItemsPageClientProps = {
   page: number;
   totalPages: number;
   filters: Record<string, string | undefined>;
+  activeTab?: string;
+  salesReport?: ItemSalesReport | null;
 };
 
-export function ItemsPageClient({ user, items, categories, tags, stats, total, page, totalPages, filters }: ItemsPageClientProps) {
+export function ItemsPageClient({
+  user,
+  items,
+  stockSummaries = {},
+  categories,
+  tags,
+  stats,
+  total,
+  page,
+  totalPages,
+  filters,
+  activeTab = "catalog",
+  salesReport,
+}: ItemsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [exporting, setExporting] = useState(false);
@@ -109,6 +128,13 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
         </div>
       </div>
 
+      <Tabs value={activeTab}>
+        <TabsList>
+          <TabsTrigger value="catalog" asChild><Link href="/items?tab=catalog">Catalogue</Link></TabsTrigger>
+          <TabsTrigger value="sales" asChild><Link href="/items?tab=sales">Ventes par période</Link></TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog" className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[
           ["Total", stats.total],
@@ -125,6 +151,7 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
       </div>
 
       <form method="get" className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-4 lg:grid-cols-6">
+        <input type="hidden" name="tab" value="catalog" />
         <div className="space-y-2 md:col-span-2"><Label htmlFor="q">Recherche</Label><Input id="q" name="q" defaultValue={filters.q ?? ""} placeholder="Nom, SKU, code-barres..." /></div>
         <div className="space-y-2"><Label htmlFor="type">Type</Label>
           <select id="type" name="type" defaultValue={filters.type ?? ""} className="flex h-10 w-full rounded-md border px-3 text-sm">
@@ -138,9 +165,9 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
           <select id="categoryId" name="categoryId" defaultValue={filters.categoryId ?? ""} className="flex h-10 w-full rounded-md border px-3 text-sm">
             <option value="">Toutes</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select></div>
-        <div className="space-y-2"><Label htmlFor="tagId">Tag</Label>
+        <div className="space-y-2"><Label htmlFor="tagId">Étiquette produit</Label>
           <select id="tagId" name="tagId" defaultValue={filters.tagId ?? ""} className="flex h-10 w-full rounded-md border px-3 text-sm">
-            <option value="">Tous</option>{tags.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="">Toutes</option>{tags.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select></div>
         <div className="space-y-2"><Label htmlFor="archived">Archivés</Label>
           <select id="archived" name="archived" defaultValue={filters.archived ?? "false"} className="flex h-10 w-full rounded-md border px-3 text-sm">
@@ -157,11 +184,13 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
             <TableHeader>
               <TableRow>
                 <TableHead>N°</TableHead><TableHead>SKU</TableHead><TableHead>Nom</TableHead><TableHead>Type</TableHead><TableHead>Statut</TableHead>
-                <TableHead>Catégorie</TableHead><TableHead>Prix HT</TableHead><TableHead>TVA</TableHead><TableHead>Prix TTC</TableHead><TableHead>Marge</TableHead><TableHead>Tags</TableHead><TableHead>Créé</TableHead><TableHead>Actions</TableHead>
+                <TableHead>Catégorie</TableHead><TableHead>Stock</TableHead><TableHead>Vendu</TableHead><TableHead>Restant</TableHead><TableHead>Achat HT</TableHead><TableHead>Prix HT</TableHead><TableHead>TVA</TableHead><TableHead>Prix TTC</TableHead><TableHead>Marge</TableHead><TableHead>Étiquettes</TableHead><TableHead>Créé</TableHead><TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
+              {items.map((item) => {
+                const stock = stockSummaries[item.id];
+                return (
                 <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs">{item.itemNumber}</TableCell>
                   <TableCell className="text-xs">{item.sku ?? "—"}</TableCell>
@@ -169,6 +198,10 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
                   <TableCell><ItemTypeBadge type={item.type} /></TableCell>
                   <TableCell><ItemStatusBadge status={item.status} /></TableCell>
                   <TableCell>{item.category?.name ?? "—"}</TableCell>
+                  <TableCell>{item.isStockable ? stock?.stockInitial ?? 0 : "—"}</TableCell>
+                  <TableCell>{stock?.quantitySold ?? 0}</TableCell>
+                  <TableCell>{item.isStockable ? stock?.quantityRemaining ?? 0 : "—"}</TableCell>
+                  <TableCell>{formatCurrency(stock?.purchasePriceExcludingTax ?? 0, item.currency)}</TableCell>
                   <TableCell>{formatCurrency(item.salePriceExcludingTax, item.currency)}</TableCell>
                   <TableCell>{formatVatRate(item.defaultVatRate)}</TableCell>
                   <TableCell>{formatCurrency(item.salePriceIncludingTax, item.currency)}</TableCell>
@@ -193,7 +226,7 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         )}
@@ -208,6 +241,17 @@ export function ItemsPageClient({ user, items, categories, tags, stats, total, p
           </div>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="sales">
+          {salesReport && (
+            <ItemsSalesPanel
+              report={salesReport}
+              filters={{ from: filters.from, to: filters.to, customerId: filters.customerId }}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

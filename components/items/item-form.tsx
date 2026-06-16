@@ -290,13 +290,19 @@ export function ItemForm({ mode, item, itemId, categories, units, tags, supplier
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-2 flex flex-wrap gap-3">
+          <div className="md:col-span-2 space-y-2">
+            <Label>Étiquettes produit</Label>
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              Collection, famille ou étiquette interne pour regrouper vos articles (ex. été 2026, textile).
+            </p>
+            <div className="flex flex-wrap gap-3">
             {tags.map((tag) => (
               <label key={tag.id} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="tagCheckbox" value={tag.id} defaultChecked={selectedTagIds.includes(tag.id)} />
                 <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: tag.color }}>{tag.name}</span>
               </label>
             ))}
+            </div>
           </div>
         </CardContent>
       </Card>

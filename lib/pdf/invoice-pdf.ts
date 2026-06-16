@@ -43,8 +43,6 @@ export async function generateInvoicePdfBuffer(data: InvoicePdfData): Promise<Bu
   doc.fontSize(18).text(data.organizationName, { continued: false });
   doc.moveDown(0.5);
   doc.fontSize(14).text(`Facture ${data.invoiceNumber}`);
-  doc.fontSize(10).fillColor("#444");
-  doc.text(data.title);
   doc.moveDown();
 
   doc.fillColor("#000").fontSize(10);

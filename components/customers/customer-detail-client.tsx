@@ -93,9 +93,17 @@ type CustomerDetailClientProps = {
     reminders: { id: string; reminderNumber: string; simulatedSentAt: Date | null }[];
     notes: { id: string; type: string; content: string; createdAt: Date }[];
   };
+  financialSummary?: {
+    totalInvoiced: number;
+    totalPaid: number;
+    totalDue: number;
+    openInvoiceCount: number;
+    overdueInvoiceCount: number;
+    currency: string;
+  };
 };
 
-export function CustomerDetailClient({ user, customer, allTags, recentPayments = [], collectionData }: CustomerDetailClientProps) {
+export function CustomerDetailClient({ user, customer, allTags, recentPayments = [], collectionData, financialSummary }: CustomerDetailClientProps) {
   const quoteCount = customer.activities.filter((a) => a.type.startsWith("QUOTE")).length;
   const invoiceCount = customer.activities.filter((a) => a.type === "INVOICE_SENT").length;
   const lastActivity = customer.activities[0];
@@ -170,11 +178,30 @@ export function CustomerDetailClient({ user, customer, allTags, recentPayments =
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">CA annuel déclaré</CardTitle></CardHeader>
-          <CardContent><p className="text-xl font-bold">{customer.annualRevenue ? formatCurrency(customer.annualRevenue) : "—"}</p></CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Total facturé</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold">{formatCurrency(financialSummary?.totalInvoiced ?? 0, financialSummary?.currency ?? customer.currency)}</p></CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Total payé</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold text-emerald-700">{formatCurrency(financialSummary?.totalPaid ?? 0, financialSummary?.currency ?? customer.currency)}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Reste dû</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold text-amber-700">{formatCurrency(financialSummary?.totalDue ?? customer.outstandingAmount, financialSummary?.currency ?? customer.currency)}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Factures ouvertes</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold">{financialSummary?.openInvoiceCount ?? 0}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Factures en retard</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold text-red-600">{financialSummary?.overdueInvoiceCount ?? collectionData?.overdueInvoices.length ?? 0}</p></CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Devis</CardTitle></CardHeader>
           <CardContent><p className="text-xl font-bold">{quoteCount}</p></CardContent>
@@ -184,8 +211,12 @@ export function CustomerDetailClient({ user, customer, allTags, recentPayments =
           <CardContent><p className="text-xl font-bold">{invoiceCount}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Encours client</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Encours enregistré</CardTitle></CardHeader>
           <CardContent><p className="text-xl font-bold">{formatCurrency(customer.outstandingAmount, customer.currency)}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">CA annuel déclaré</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold">{customer.annualRevenue ? formatCurrency(customer.annualRevenue) : "—"}</p></CardContent>
         </Card>
       </div>
 

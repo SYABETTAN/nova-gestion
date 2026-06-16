@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { InvoicePaymentStatusBadge, InvoiceStatusBadge, InvoiceTypeBadge } from "@/components/invoices/invoice-badges";
 import { formatCurrency } from "@/lib/pricing";
-import { INVOICE_PAYMENT_STATUS_LABELS, INVOICE_STATUS_LABELS, INVOICE_TYPE_LABELS } from "@/lib/invoice-status";
+import { canMarkPaid, INVOICE_PAYMENT_STATUS_LABELS, INVOICE_STATUS_LABELS, INVOICE_TYPE_LABELS } from "@/lib/invoice-status";
 import type { SessionUser } from "@/lib/permissions";
 import type { MoneyInput } from "@/lib/money";
 import { formatDateShort } from "@/lib/utils";
@@ -239,7 +239,7 @@ export function InvoicesPageClient({
                             {inv.status === "DRAFT" && (
                               <DropdownMenuItem onClick={() => runAction(() => validateInvoiceAction(inv.id), "Facture validée")}>Valider</DropdownMenuItem>
                             )}
-                            {inv.status !== "PAID" && inv.status !== "DRAFT" && (
+                            {canMarkPaid(inv.status) && (
                               <DropdownMenuItem asChild>
                                 <Link href={`/payments/new?invoiceId=${inv.id}`}>Enregistrer un paiement</Link>
                               </DropdownMenuItem>

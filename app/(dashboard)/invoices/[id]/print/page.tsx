@@ -17,7 +17,7 @@ export default async function InvoicePrintPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-white p-8 print:p-0">
       <div className="mb-6 print:hidden"><InvoicePrintActions /></div>
-      <InvoicePreview invoice={invoice} organization={formData.organization} compact />
+      <InvoicePreview invoice={invoice} organization={formData.organization} compact showPaymentSummary />
     </div>
   );
 }

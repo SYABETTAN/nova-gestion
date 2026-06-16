@@ -44,10 +44,18 @@ type OpenInvoice = {
 type PaymentFormProps = {
   mode: "create" | "edit";
   customers: CustomerOption[];
+  disabled?: boolean;
   prefill?: {
     customerId?: string;
     invoiceId?: string;
     amount?: number;
+    invoiceNumber?: string;
+    customerName?: string;
+    totalIncludingTax?: number;
+    amountPaid?: number;
+    amountDue?: number;
+    currency?: string;
+    returnInvoiceId?: string;
   };
   payment?: {
     id: string;
@@ -66,15 +74,18 @@ type PaymentFormProps = {
   };
 };
 
-export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormProps) {
+export function PaymentForm({ mode, customers, prefill, payment, disabled }: PaymentFormProps) {
   const router = useRouter();
+  const hasInvoicePrefill = Boolean(mode === "create" && prefill?.invoiceId);
   const [customerId, setCustomerId] = useState(prefill?.customerId ?? payment?.customerId ?? "");
   const [paymentDate, setPaymentDate] = useState(
     payment?.paymentDate
       ? new Date(payment.paymentDate).toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10),
   );
-  const [amount, setAmount] = useState(String(prefill?.amount ?? (payment?.amount != null ? moneyToNumber(payment.amount) : "")));
+  const [amount, setAmount] = useState(
+    String(prefill?.amount ?? (payment?.amount != null ? moneyToNumber(payment.amount) : "")),
+  );
   const [method, setMethod] = useState<PaymentMethod>(payment?.method ?? "BANK_TRANSFER");
   const [reference, setReference] = useState(payment?.reference ?? "");
   const [bankReference, setBankReference] = useState(payment?.bankReference ?? "");
@@ -82,27 +93,31 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
   const [cardLast4, setCardLast4] = useState(payment?.cardLast4 ?? "");
   const [notes, setNotes] = useState(payment?.notes ?? "");
   const [internalNotes, setInternalNotes] = useState(payment?.internalNotes ?? "");
-  const [autoAllocate, setAutoAllocate] = useState(mode === "create");
+  const [autoAllocate, setAutoAllocate] = useState(mode === "create" && !hasInvoicePrefill);
   const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [prefillApplied, setPrefillApplied] = useState(false);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const amountNum = moneyToNumber(money(amount || "0"));
+  const currency = prefill?.currency ?? payment?.currency ?? selectedCustomer?.currency ?? "EUR";
 
   useEffect(() => {
     if (!customerId || mode === "edit") return;
     getOpenInvoicesForCustomerAction(customerId).then((invoices) => {
       setOpenInvoices(invoices);
-      if (prefill?.invoiceId) {
+      if (prefill?.invoiceId && !prefillApplied) {
         const inv = invoices.find((i) => i.id === prefill.invoiceId);
         if (inv) {
-          setAllocations({ [inv.id]: String(inv.amountDue) });
+          setAllocations({ [inv.id]: String(moneyToNumber(inv.amountDue)) });
           setAutoAllocate(false);
+          setAmount(String(moneyToNumber(inv.amountDue)));
+          setPrefillApplied(true);
         }
       }
     });
-  }, [customerId, mode, prefill?.invoiceId]);
+  }, [customerId, mode, prefill?.invoiceId, prefillApplied]);
 
   const totalAllocated = useMemo(() => {
     return moneyToNumber(
@@ -125,7 +140,7 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
   }
 
   useEffect(() => {
-    if (autoAllocate && amountNum > 0 && openInvoices.length > 0) {
+    if (autoAllocate && amountNum > 0 && openInvoices.length > 0 && !hasInvoicePrefill) {
       const auto = buildAutoAllocations(amountNum, openInvoices);
       const map: Record<string, string> = {};
       auto.forEach((a) => {
@@ -133,10 +148,11 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
       });
       setAllocations(map);
     }
-  }, [amountNum, autoAllocate, openInvoices]);
+  }, [amountNum, autoAllocate, openInvoices, hasInvoicePrefill]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (disabled) return;
     setLoading(true);
 
     const allocationList = Object.entries(allocations)
@@ -147,7 +163,7 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
       customerId,
       paymentDate: new Date(paymentDate),
       amount: amountNum,
-      currency: "EUR",
+      currency,
       method,
       reference: reference || null,
       bankReference: bankReference || null,
@@ -167,8 +183,12 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
     setLoading(false);
     if (result.success) {
       toast.success(mode === "create" ? "Paiement enregistré" : "Paiement modifié");
-      const targetId = mode === "create" && "paymentId" in result ? result.paymentId : payment!.id;
-      router.push(`/payments/${targetId}`);
+      if (mode === "create" && prefill?.returnInvoiceId) {
+        router.push(`/invoices/${prefill.returnInvoiceId}`);
+      } else {
+        const targetId = mode === "create" && "paymentId" in result ? result.paymentId : payment!.id;
+        router.push(`/payments/${targetId}`);
+      }
       router.refresh();
     } else {
       toast.error(result.error ?? "Erreur");
@@ -177,12 +197,30 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {hasInvoicePrefill && prefill?.invoiceNumber && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6 text-sm">
+            <p className="font-medium">
+              Paiement pour la facture {prefill.invoiceNumber}
+              {prefill.customerName ? ` — ${prefill.customerName}` : ""}
+            </p>
+            <div className="mt-2 grid gap-1 text-[var(--color-muted-foreground)] md:grid-cols-3">
+              <p>Total TTC : {formatCurrency(prefill.totalIncludingTax ?? 0, currency)}</p>
+              <p>Déjà payé : {formatCurrency(prefill.amountPaid ?? 0, currency)}</p>
+              <p className="font-medium text-amber-700">
+                Reste à payer : {formatCurrency(prefill.amountDue ?? prefill.amount ?? 0, currency)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader><CardTitle>Client</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Client *</Label>
-            <Select value={customerId} onValueChange={setCustomerId} disabled={mode === "edit"}>
+            <Select value={customerId} onValueChange={setCustomerId} disabled={mode === "edit" || disabled || hasInvoicePrefill}>
               <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
               <SelectContent>
                 {customers.map((c) => (
@@ -193,7 +231,7 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
           </div>
           {selectedCustomer && (
             <div className="rounded-lg bg-slate-50 p-3 text-sm">
-              <p>Encours client : {formatCurrency(selectedCustomer.outstandingAmount ?? 0)}</p>
+              <p>Encours client : {formatCurrency(selectedCustomer.outstandingAmount ?? 0, currency)}</p>
               <p className="text-[var(--color-muted-foreground)]">
                 {openInvoices.length} facture(s) ouverte(s)
               </p>
@@ -207,15 +245,15 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="paymentDate">Date de paiement *</Label>
-            <Input id="paymentDate" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required />
+            <Input id="paymentDate" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required disabled={disabled} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="amount">Montant *</Label>
-            <Input id="amount" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            <Input id="amount" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required disabled={disabled} />
           </div>
           <div className="space-y-2">
             <Label>Mode de paiement *</Label>
-            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)} disabled={disabled}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(PAYMENT_METHOD_LABELS).map(([k, v]) => (
@@ -226,31 +264,31 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
           </div>
           <div className="space-y-2">
             <Label htmlFor="reference">Référence</Label>
-            <Input id="reference" value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Input id="reference" value={reference} onChange={(e) => setReference(e.target.value)} disabled={disabled} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="bankReference">Référence bancaire</Label>
-            <Input id="bankReference" value={bankReference} onChange={(e) => setBankReference(e.target.value)} />
+            <Input id="bankReference" value={bankReference} onChange={(e) => setBankReference(e.target.value)} disabled={disabled} />
           </div>
           {method === "CHECK" && (
             <div className="space-y-2">
               <Label htmlFor="checkNumber">N° chèque</Label>
-              <Input id="checkNumber" value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} />
+              <Input id="checkNumber" value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} disabled={disabled} />
             </div>
           )}
           {method === "CARD" && (
             <div className="space-y-2">
               <Label htmlFor="cardLast4">4 derniers chiffres</Label>
-              <Input id="cardLast4" maxLength={4} value={cardLast4} onChange={(e) => setCardLast4(e.target.value)} />
+              <Input id="cardLast4" maxLength={4} value={cardLast4} onChange={(e) => setCardLast4(e.target.value)} disabled={disabled} />
             </div>
           )}
           <div className="md:col-span-2 space-y-2">
             <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={disabled} />
           </div>
           <div className="md:col-span-2 space-y-2">
             <Label htmlFor="internalNotes">Notes internes</Label>
-            <Textarea id="internalNotes" value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} />
+            <Textarea id="internalNotes" value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} disabled={disabled} />
           </div>
         </CardContent>
       </Card>
@@ -261,15 +299,18 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
             <CardTitle>Allocation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={autoAllocate}
-                onChange={(e) => handleAutoAllocateToggle(e.target.checked)}
-              />
-              Allocation automatique (factures les plus anciennes en premier)
-            </label>
-            {!autoAllocate && (
+            {!hasInvoicePrefill && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={autoAllocate}
+                  onChange={(e) => handleAutoAllocateToggle(e.target.checked)}
+                  disabled={disabled}
+                />
+                Allocation automatique (factures les plus anciennes en premier)
+              </label>
+            )}
+            {(!autoAllocate || hasInvoicePrefill) && (
               <div className="space-y-3">
                 {openInvoices.map((inv) => (
                   <div key={inv.id} className="flex flex-wrap items-center gap-4 rounded border p-3">
@@ -287,6 +328,7 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
                       className="w-32"
                       placeholder="0,00"
                       value={allocations[inv.id] ?? ""}
+                      disabled={disabled}
                       onChange={(e) =>
                         setAllocations((prev) => ({ ...prev, [inv.id]: e.target.value }))
                       }
@@ -299,9 +341,17 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
             <div className="flex justify-between text-sm font-medium">
               <span>Montant restant à allouer</span>
               <span className={remainingToAllocate > 0 ? "text-amber-600" : "text-emerald-600"}>
-                {formatCurrency(remainingToAllocate)}
+                {formatCurrency(remainingToAllocate, currency)}
               </span>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {mode === "create" && customerId && openInvoices.length === 0 && hasInvoicePrefill && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-amber-700">
+            La facture ciblée n&apos;est plus éligible au paiement ou le solde est nul.
           </CardContent>
         </Card>
       )}
@@ -309,17 +359,19 @@ export function PaymentForm({ mode, customers, prefill, payment }: PaymentFormPr
       {mode === "edit" && payment && (
         <Card>
           <CardContent className="pt-6 text-sm text-[var(--color-muted-foreground)]">
-            Montant déjà alloué : {formatCurrency(payment.allocatedAmount)} — Les allocations se gèrent depuis la fiche paiement.
+            Montant déjà alloué : {formatCurrency(payment.allocatedAmount, payment.currency)} — Les allocations se gèrent depuis la fiche paiement.
           </CardContent>
         </Card>
       )}
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || disabled}>
           {loading ? "Enregistrement..." : mode === "create" ? "Enregistrer le paiement" : "Sauvegarder"}
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href={mode === "edit" ? `/payments/${payment!.id}` : "/payments"}>Annuler</Link>
+          <Link href={prefill?.returnInvoiceId ? `/invoices/${prefill.returnInvoiceId}` : mode === "edit" ? `/payments/${payment!.id}` : "/payments"}>
+            Annuler
+          </Link>
         </Button>
       </div>
     </form>

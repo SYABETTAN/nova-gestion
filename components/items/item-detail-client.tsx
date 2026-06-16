@@ -12,7 +12,6 @@ import { PermissionGate } from "@/components/shared/permission-gate";
 import { ItemStatusBadge, ItemTypeBadge, MarginBadge } from "@/components/items/item-badges";
 import { ITEM_ACTIVITY_LABELS, RECURRING_INTERVAL_LABELS } from "@/lib/item-utils";
 import { formatCurrency, formatVatRate, moneyToNumber } from "@/lib/pricing";
-import { moneyAdd } from "@/lib/money";
 import type { SessionUser } from "@/lib/permissions";
 import { formatDate, formatDateShort } from "@/lib/utils";
 import { archiveItemAction, reactivateItemAction } from "@/server/actions/item.actions";
@@ -20,17 +19,25 @@ import { assignItemTagAction, removeItemTagAction } from "@/server/actions/item-
 
 type ItemDetail = NonNullable<Awaited<ReturnType<typeof import("@/server/actions/item.actions").getItemByIdAction>>>;
 
-export function ItemDetailClient({ user, item, allTags }: { user: SessionUser; item: ItemDetail; allTags: ItemTag[] }) {
+export function ItemDetailClient({
+  user,
+  item,
+  allTags,
+  stockSummary,
+}: {
+  user: SessionUser;
+  item: ItemDetail;
+  allTags: ItemTag[];
+  stockSummary?: {
+    stockInitial: number;
+    quantitySold: number;
+    quantityRemaining: number | null;
+    revenueExcludingTax: number;
+    revenueIncludingTax: number;
+  };
+}) {
   const quoteCount = item.activities.filter((a) => a.type === "ADDED_TO_QUOTE").length;
   const invoiceCount = item.activities.filter((a) => a.type === "ADDED_TO_INVOICE").length;
-  const soldQty = moneyToNumber(
-    item.activities.reduce((s, a) => moneyAdd(s, a.quantity ?? 0), moneyAdd(0, 0)),
-  );
-  const fakeRevenue = moneyToNumber(
-    item.activities
-      .filter((a) => a.amount)
-      .reduce((s, a) => moneyAdd(s, a.amount ?? 0), moneyAdd(0, 0)),
-  );
 
   function placeholder(module: string) {
     toast.info(`Module ${module} non encore disponible dans cette `);
@@ -73,8 +80,9 @@ export function ItemDetailClient({ user, item, allTags }: { user: SessionUser; i
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Devis</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{quoteCount}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Factures</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{invoiceCount}</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">CA estimé</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{formatCurrency(fakeRevenue)}</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Qté vendue fictive</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{soldQty}</p></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">CA HT (factures)</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{formatCurrency(stockSummary?.revenueExcludingTax ?? 0, item.currency)}</p></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Qté vendue</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{stockSummary?.quantitySold ?? 0}</p></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-[var(--color-muted-foreground)]">Stock restant</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{item.isStockable ? stockSummary?.quantityRemaining ?? 0 : "—"}</p></CardContent></Card>
       </div>
 
       <Tabs defaultValue="summary">
@@ -92,7 +100,10 @@ export function ItemDetailClient({ user, item, allTags }: { user: SessionUser; i
               <p>Catégorie : {item.category?.name ?? "—"}</p>
               <p>Unité : {item.unit ? `${item.unit.name} (${item.unit.symbol})` : "—"}</p>
               <p>Récurrence : {item.isRecurring ? RECURRING_INTERVAL_LABELS[item.recurringInterval ?? ""] ?? "Oui" : "Non"}</p>
-              <p>Stock : {item.isStockable ? `${item.stockQuantity} (seuil ${item.stockAlertThreshold})` : "Non stockable"}</p>
+              <p>Stock initial : {item.isStockable ? stockSummary?.stockInitial ?? moneyToNumber(item.stockQuantity) : "Non stockable"}</p>
+              <p>Quantité vendue : {stockSummary?.quantitySold ?? 0}</p>
+              <p>Stock restant : {item.isStockable ? stockSummary?.quantityRemaining ?? 0 : "—"}</p>
+              <p>Seuil alerte : {item.isStockable ? moneyToNumber(item.stockAlertThreshold) : "—"}</p>
             </CardContent></Card>
             <Card><CardHeader><CardTitle>Prix</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">
               <p>HT : {formatCurrency(item.salePriceExcludingTax, item.currency)}</p>

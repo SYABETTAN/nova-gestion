@@ -5,6 +5,7 @@ import { getRecentPaymentsByCustomerAction } from "@/server/actions/payment.acti
 import { getCustomerCollectionDataQuery } from "@/lib/reminders";
 import {
   getCustomerByIdAction,
+  getCustomerFinancialSummaryAction,
   getCustomerTagsAction,
 } from "@/server/actions/customer.actions";
 
@@ -16,11 +17,12 @@ export default async function CustomerDetailPage({ params }: PageProps) {
   const user = await requireAuth();
   const { id } = await params;
 
-  const [customer, allTags, recentPayments, collectionData] = await Promise.all([
+  const [customer, allTags, recentPayments, collectionData, financialSummary] = await Promise.all([
     getCustomerByIdAction(id),
     getCustomerTagsAction(),
     getRecentPaymentsByCustomerAction(id),
     getCustomerCollectionDataQuery(user.organizationId, id),
+    getCustomerFinancialSummaryAction(id),
   ]);
 
   if (!customer) notFound();
@@ -32,6 +34,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
       allTags={allTags}
       recentPayments={recentPayments}
       collectionData={collectionData}
+      financialSummary={financialSummary}
     />
   );
 }

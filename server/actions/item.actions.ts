@@ -21,6 +21,11 @@ import {
   getItemUnitsQuery,
   listItemsQuery,
 } from "@/lib/items";
+import {
+  getItemSalesReportQuery,
+  getItemStockSummariesQuery,
+  type ItemSalesFilters,
+} from "@/lib/item-sales";
 
 function emptyToNull(value?: string | null): string | null {
   if (!value || value === "none") return null;
@@ -426,4 +431,56 @@ export async function exportItemsCsvAction(searchParams: Record<string, string |
   });
 
   return { success: true, csv, filename: "catalogue.csv" };
+}
+
+function parseSalesFilters(searchParams: Record<string, string | undefined>): ItemSalesFilters {
+  return {
+    from: searchParams.from ? new Date(searchParams.from) : undefined,
+    to: searchParams.to ? new Date(`${searchParams.to}T23:59:59.999`) : undefined,
+    customerId: searchParams.customerId || undefined,
+    itemId: searchParams.itemId || undefined,
+  };
+}
+
+export async function getItemSalesReportAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemSalesReportQuery(user.organizationId, parseSalesFilters(searchParams));
+}
+
+export async function getItemStockSummariesAction(itemIds: string[]) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  const items = await prisma.item.findMany({
+    where: { organizationId: user.organizationId, id: { in: itemIds } },
+    select: {
+      id: true,
+      isStockable: true,
+      stockQuantity: true,
+      purchasePriceExcludingTax: true,
+      salePriceExcludingTax: true,
+      unit: { select: { symbol: true } },
+    },
+  });
+  return getItemStockSummariesQuery(user.organizationId, items);
+}
+
+export async function exportItemSalesCsvAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  const report = await getItemSalesReportQuery(user.organizationId, parseSalesFilters(searchParams));
+  const header = "Produit;SKU;Quantite;CA HT;CA TTC;Marge\n";
+  const rows = report.rows
+    .map((row) =>
+      [
+        row.name,
+        row.sku ?? "",
+        row.quantitySold,
+        row.revenueExcludingTax,
+        row.revenueIncludingTax,
+        row.marginAmount,
+      ].join(";"),
+    )
+    .join("\n");
+  return { success: true as const, csv: header + rows, filename: "ventes-produits.csv" };
 }

@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoicePaymentStatusBadge, InvoiceStatusBadge, InvoiceTypeBadge } from "@/components/invoices/invoice-badges";
 import { InvoiceTotals } from "@/components/invoices/invoice-totals";
 import { calculateInvoiceTotals } from "@/lib/invoice-calculations";
-import { formatCurrency } from "@/lib/pricing";
+import { formatCurrency, formatVatRate } from "@/lib/pricing";
 import { formatDateShort } from "@/lib/utils";
 import type { InvoicePaymentStatus, InvoiceStatus } from "@prisma/client";
 import type { MoneyInput } from "@/lib/money";
@@ -29,6 +29,8 @@ type InvoicePreviewProps = {
     shippingAmountExcludingTax: MoneyInput;
     otherFeesExcludingTax: MoneyInput;
     amountPaid: MoneyInput;
+    amountDue: MoneyInput;
+    totalIncludingTax: MoneyInput;
     customer: { name: string; email: string | null };
     customerContact: { firstName: string; lastName: string; email: string | null } | null;
     billingAddress: {
@@ -65,9 +67,10 @@ type InvoicePreviewProps = {
     logoUrl: string | null;
   } | null;
   compact?: boolean;
+  showPaymentSummary?: boolean;
 };
 
-export function InvoicePreview({ invoice, organization, compact }: InvoicePreviewProps) {
+export function InvoicePreview({ invoice, organization, compact, showPaymentSummary = true }: InvoicePreviewProps) {
   const totals = calculateInvoiceTotals({
     lines: invoice.lines.map((l) => ({
       lineType: l.lineType as "ITEM" | "SERVICE" | "FREE_TEXT" | "SECTION" | "COMMENT",
@@ -103,11 +106,13 @@ export function InvoicePreview({ invoice, organization, compact }: InvoicePrevie
         <div className="text-right">
           <p className="text-2xl font-bold">FACTURE</p>
           <p className="font-mono">{invoice.invoiceNumber}</p>
-          <div className="mt-2 flex justify-end gap-2">
-            <InvoiceTypeBadge type={invoice.type} />
-            <InvoiceStatusBadge status={invoice.status} />
-            <InvoicePaymentStatusBadge status={invoice.paymentStatus} />
-          </div>
+          {!compact && (
+            <div className="mt-2 flex justify-end gap-2">
+              <InvoiceTypeBadge type={invoice.type} />
+              <InvoiceStatusBadge status={invoice.status} />
+              <InvoicePaymentStatusBadge status={invoice.paymentStatus} />
+            </div>
+          )}
           <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
             Émise le {formatDateShort(invoice.issueDate)}
           </p>
@@ -130,10 +135,18 @@ export function InvoicePreview({ invoice, organization, compact }: InvoicePrevie
           )}
         </div>
         <div>
-          <p className="font-semibold">{invoice.title}</p>
+          {invoice.subject && <p className="text-sm">{invoice.subject}</p>}
           <p className="text-sm">Délai de paiement : {invoice.paymentTermsDays} jours</p>
         </div>
       </div>
+
+      {showPaymentSummary && moneyToNumber(invoice.amountDue) >= 0 && (
+        <div className="mb-4 grid gap-2 rounded-lg bg-slate-50 p-3 text-sm md:grid-cols-3">
+          <p>Total TTC : <strong>{formatCurrency(invoice.totalIncludingTax, invoice.currency)}</strong></p>
+          <p>Payé : <strong className="text-emerald-700">{formatCurrency(invoice.amountPaid, invoice.currency)}</strong></p>
+          <p>Reste à payer : <strong className="text-amber-700">{formatCurrency(invoice.amountDue, invoice.currency)}</strong></p>
+        </div>
+      )}
 
       {invoice.introductionText && (
         <p className="mb-4 text-sm whitespace-pre-wrap">{invoice.introductionText}</p>
@@ -142,9 +155,11 @@ export function InvoicePreview({ invoice, organization, compact }: InvoicePrevie
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Réf.</TableHead>
             <TableHead>Désignation</TableHead>
-            {!compact && <TableHead className="text-right">Qté</TableHead>}
-            {!compact && <TableHead className="text-right">P.U. HT</TableHead>}
+            <TableHead className="text-right">Qté</TableHead>
+            <TableHead className="text-right">P.U. HT</TableHead>
+            <TableHead className="text-right">TVA</TableHead>
             <TableHead className="text-right">Total HT</TableHead>
           </TableRow>
         </TableHeader>
@@ -155,18 +170,20 @@ export function InvoicePreview({ invoice, organization, compact }: InvoicePrevie
             if (isNonBillable) {
               return (
                 <TableRow key={i}>
-                  <TableCell colSpan={4} className="bg-slate-50 font-semibold">{src.name}</TableCell>
+                  <TableCell colSpan={6} className="bg-slate-50 font-semibold">{src.name}</TableCell>
                 </TableRow>
               );
             }
             return (
               <TableRow key={i}>
+                <TableCell className="font-mono text-xs">{src.reference ?? "—"}</TableCell>
                 <TableCell>
                   <div>{src.name}</div>
-                  {src.reference && <div className="text-xs text-[var(--color-muted-foreground)]">{src.reference}</div>}
+                  {src.description && <div className="text-xs text-[var(--color-muted-foreground)]">{src.description}</div>}
                 </TableCell>
-                {!compact && <TableCell className="text-right">{moneyToNumber(src.quantity)} {src.unit}</TableCell>}
-                {!compact && <TableCell className="text-right">{formatCurrency(src.unitPriceExcludingTax, invoice.currency)}</TableCell>}
+                <TableCell className="text-right">{moneyToNumber(src.quantity)} {src.unit}</TableCell>
+                <TableCell className="text-right">{formatCurrency(src.unitPriceExcludingTax, invoice.currency)}</TableCell>
+                <TableCell className="text-right">{formatVatRate(src.vatRate)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(line.totalExcludingTax, invoice.currency)}</TableCell>
               </TableRow>
             );

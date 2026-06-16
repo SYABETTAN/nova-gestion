@@ -235,3 +235,24 @@ export async function getPaymentFormDataQuery(organizationId: string) {
   ]);
   return { customers, organization };
 }
+
+export async function getPaymentFormDataWithPrefillQuery(
+  organizationId: string,
+  prefilledCustomerId?: string,
+) {
+  const { customers, organization } = await getPaymentFormDataQuery(organizationId);
+  if (!prefilledCustomerId || customers.some((c) => c.id === prefilledCustomerId)) {
+    return { customers, organization };
+  }
+
+  const extra = await prisma.customer.findFirst({
+    where: { id: prefilledCustomerId, organizationId },
+    select: { id: true, name: true, outstandingAmount: true, currency: true },
+  });
+  if (!extra) return { customers, organization };
+
+  return {
+    customers: [extra, ...customers],
+    organization,
+  };
+}

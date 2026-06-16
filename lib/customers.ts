@@ -135,6 +135,86 @@ export async function getCustomerByIdQuery(organizationId: string, id: string) {
   });
 }
 
+export async function searchCustomersForSelectQuery(
+  organizationId: string,
+  query: string,
+  limit = 20,
+) {
+  const q = query.trim();
+  if (!q) {
+    return prisma.customer.findMany({
+      where: { organizationId, isArchived: false },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        customerNumber: true,
+        email: true,
+        phone: true,
+        siret: true,
+      },
+      orderBy: { name: "asc" },
+      take: limit,
+    });
+  }
+
+  return prisma.customer.findMany({
+    where: {
+      organizationId,
+      isArchived: false,
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { displayName: { contains: q, mode: "insensitive" } },
+        { legalName: { contains: q, mode: "insensitive" } },
+        { customerNumber: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
+        { siret: { contains: q, mode: "insensitive" } },
+        { vatNumber: { contains: q, mode: "insensitive" } },
+        {
+          contacts: {
+            some: {
+              OR: [
+                { firstName: { contains: q, mode: "insensitive" } },
+                { lastName: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+                { phone: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      displayName: true,
+      customerNumber: true,
+      email: true,
+      phone: true,
+      siret: true,
+    },
+    orderBy: { name: "asc" },
+    take: limit,
+  });
+}
+
+export async function getCustomerOptionByIdQuery(organizationId: string, customerId: string) {
+  return prisma.customer.findFirst({
+    where: { id: customerId, organizationId },
+    select: {
+      id: true,
+      name: true,
+      displayName: true,
+      customerNumber: true,
+      email: true,
+      phone: true,
+      siret: true,
+      isArchived: true,
+    },
+  });
+}
+
 export async function getCustomerStatsQuery(organizationId: string) {
   const baseWhere = { organizationId, isArchived: false };
   const [total, prospects, active, outstanding] = await Promise.all([

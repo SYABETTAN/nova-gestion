@@ -17,9 +17,12 @@ import { parseTagIds } from "@/lib/customer-utils";
 import {
   getAllTagsQuery,
   getCustomerByIdQuery,
+  getCustomerOptionByIdQuery,
   getCustomerStatsQuery,
   listCustomersQuery,
+  searchCustomersForSelectQuery,
 } from "@/lib/customers";
+import { getCustomerFinancialSummaryQuery } from "@/lib/customer-financials";
 
 function emptyToNull(value?: string | number | null): string | null {
   if (value === undefined || value === null || value === "") return null;
@@ -374,4 +377,51 @@ export async function exportCustomersCsvAction(searchParams: Record<string, stri
   });
 
   return { success: true, csv, filename: "clients.csv" };
+}
+
+export async function searchCustomersForSelectAction(query = "") {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_READ");
+  return searchCustomersForSelectQuery(user.organizationId, query, 20);
+}
+
+export async function getCustomerFinancialSummaryAction(customerId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_READ");
+  return getCustomerFinancialSummaryQuery(user.organizationId, customerId);
+}
+
+export async function getCustomerForInvoiceFormAction(customerId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_READ");
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, organizationId: user.organizationId, isArchived: false },
+    select: {
+      id: true,
+      name: true,
+      displayName: true,
+      customerNumber: true,
+      email: true,
+      phone: true,
+      siret: true,
+      defaultPaymentTermsDays: true,
+      contacts: {
+        where: { isArchived: false },
+        select: { id: true, firstName: true, lastName: true, email: true, isPrimary: true },
+        orderBy: [{ isPrimary: "desc" }, { lastName: "asc" }],
+      },
+      addresses: {
+        select: {
+          id: true,
+          type: true,
+          label: true,
+          addressLine1: true,
+          city: true,
+          isDefault: true,
+        },
+        orderBy: [{ isDefault: "desc" }, { type: "asc" }],
+      },
+    },
+  });
+  return customer;
 }
