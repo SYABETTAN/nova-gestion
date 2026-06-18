@@ -1,4 +1,4 @@
-# Guide de déploiement — Nova Gestion
+# Guide de déploiement — Joey & Joey
 
 > **Mode bêta actif** : pour les hotfix fréquents, utiliser [DEPLOY-BETA.md](./DEPLOY-BETA.md). Les checks CI stricts sont désactivés au push.
 

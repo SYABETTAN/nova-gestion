@@ -95,7 +95,7 @@ Dans **Settings → Environment Variables**, ajouter (Production + Preview) :
 | `SESSION_SECRET` | `openssl rand -hex 32` |
 | `APP_ENV` | `production` |
 | `NEXT_PUBLIC_APP_ENV` | `production` |
-| `NEXT_PUBLIC_APP_NAME` | `Nova Gestion` |
+| `NEXT_PUBLIC_APP_NAME` | `Joey & Joey` |
 | `NEXT_PUBLIC_APP_URL` | `https://votre-projet.vercel.app` (mettre à jour après 1er deploy) |
 | `SEED_DEV_DATA` | `false` |
 | `ENABLE_DEV_LOGIN` | `false` |
@@ -103,7 +103,7 @@ Dans **Settings → Environment Variables**, ajouter (Production + Preview) :
 | `REGISTRATION_MODE` | `open_dev` (démo) ou `invite_only` |
 | `ALLOW_PUBLIC_SIGNUP` | `true` (si démo open_dev) |
 | `EMAIL_PROVIDER` | `resend` |
-| `EMAIL_FROM` | `Nova Gestion <onboarding@resend.dev>` |
+| `EMAIL_FROM` | `Joey & Joey <onboarding@resend.dev>` |
 | `RESEND_API_KEY` | clé Resend |
 | `STORAGE_PROVIDER` | `local` (démo) ou `s3` (R2) |
 | `STORAGE_PATH` | `/tmp/uploads` |

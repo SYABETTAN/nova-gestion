@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { sendInvoiceEmailAction } from "@/server/actions/invoice-status.actions";
 
 type InvoiceSendDialogProps = {
@@ -28,9 +29,9 @@ export function InvoiceSendDialog({
 }: InvoiceSendDialogProps) {
   const [loading, setLoading] = useState(false);
   const [recipient, setRecipient] = useState(defaultRecipient ?? "");
-  const [subject, setSubject] = useState(`Facture ${invoiceNumber} — Nova Gestion`);
+  const [subject, setSubject] = useState(`Facture ${invoiceNumber} — ${APP_DISPLAY_NAME}`);
   const [message, setMessage] = useState(
-    "Bonjour,\n\nVeuillez trouver ci-joint notre facture. Merci de procéder au règlement avant la date d'échéance.\n\nCordialement,\nL'équipe Nova Gestion",
+    `Bonjour,\n\nVeuillez trouver ci-joint notre facture. Merci de procéder au règlement avant la date d'échéance.\n\nCordialement,\nL'équipe ${APP_DISPLAY_NAME}`,
   );
 
   async function handleSend() {

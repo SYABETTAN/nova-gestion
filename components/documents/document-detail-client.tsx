@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Archive, Download, Printer } from "lucide-react";
@@ -109,7 +110,7 @@ export function DocumentDetailClient({
       </div>
 
       <p className="text-xs text-[var(--color-muted-foreground)]">
-        Document généré par Nova Gestion.
+        Document généré par {APP_DISPLAY_NAME}.
       </p>
     </div>
   );

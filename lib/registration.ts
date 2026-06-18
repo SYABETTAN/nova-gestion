@@ -1,3 +1,4 @@
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { getEnv, isProduction } from "@/lib/env";
 
 export type RegistrationMode = "closed" | "invite_only" | "email_verification" | "open_dev";
@@ -6,7 +7,7 @@ export const REGISTRATION_MESSAGES = {
   inviteOnly:
     "Les inscriptions sont actuellement disponibles sur invitation. Rejoignez une organisation via le lien reçu par email, ou contactez l'équipe pour activer votre espace.",
   closed:
-    "Les inscriptions publiques sont fermées. Contactez l'équipe Nova Gestion pour activer votre espace.",
+    `Les inscriptions publiques sont fermées. Contactez l'équipe ${APP_DISPLAY_NAME} pour activer votre espace.`,
   emailVerification:
     "La vérification email à l'inscription n'est pas encore disponible. Contactez l'équipe pour activer votre espace.",
 } as const;

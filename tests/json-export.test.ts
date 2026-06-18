@@ -5,7 +5,7 @@ describe("json export", () => {
   it("generateJsonExport inclut les métadonnées d'environnement", () => {
     const json = generateJsonExport(
       {
-        organizationName: "Nova Gestion",
+        organizationName: "Joey & Joey",
         generatedAt: "2025-05-29T10:00:00.000Z",
         environment: "development",
         exportType: "CUSTOMERS",

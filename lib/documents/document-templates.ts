@@ -1,4 +1,5 @@
 import type { DocumentTemplate, DocumentType } from "@prisma/client";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 
 export function resolveDefaultTemplate(
   templates: DocumentTemplate[],
@@ -17,7 +18,7 @@ export function replaceTemplateVariables(
 }
 
 export const DEFAULT_TEMPLATE_VARS: Record<string, string> = {
-  organizationName: "Nova Gestion",
+  organizationName: APP_DISPLAY_NAME,
   documentNumber: "DOC-0001",
   customerName: "Client démo",
   supplierName: "Fournisseur démo",

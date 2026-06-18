@@ -179,7 +179,7 @@ export async function seedReminders(
       amountDue: fresh.amountDue,
       currency: fresh.currency,
       daysOverdue,
-      organizationName: org?.name ?? "Nova Gestion",
+      organizationName: org?.name ?? "Joey & Joey",
       includePaymentLink: true,
     });
 

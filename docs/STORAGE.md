@@ -1,6 +1,6 @@
 # Stockage documentaire (Étape 8)
 
-Nova Gestion stocke les fichiers (pièces jointes, PDF générés, uploads) **hors base de données**, derrière une couche d’abstraction `StorageProvider`.
+Joey & Joey stocke les fichiers (pièces jointes, PDF générés, uploads) **hors base de données**, derrière une couche d’abstraction `StorageProvider`.
 
 ## Architecture
 

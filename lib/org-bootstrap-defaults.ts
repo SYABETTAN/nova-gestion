@@ -1,4 +1,5 @@
 import type { DocumentType, NumberingSequenceType } from "@prisma/client";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 
 /** Plan comptable minimal requis pour factures, paiements et écritures automatiques. */
 export const BOOTSTRAP_ACCOUNTS = [
@@ -130,7 +131,7 @@ export const BOOTSTRAP_DOCUMENT_TEMPLATES: {
     name: "Facture standard",
     description: "Modèle de facture client",
     headerText: "{{organizationName}} — Facture {{documentNumber}}",
-    footerText: "Document généré par Nova Gestion.",
+    footerText: `Document généré par ${APP_DISPLAY_NAME}.`,
     isDefault: true,
   },
   {

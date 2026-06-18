@@ -22,7 +22,7 @@ const TEMPLATE_DEFS: {
     name: "Facture standard",
     description: "Modèle de facture client",
     headerText: "{{organizationName}} — Facture {{documentNumber}}",
-    footerText: "Document généré par Nova Gestion.",
+    footerText: "Document généré par Joey & Joey.",
     isDefault: true,
   },
   {

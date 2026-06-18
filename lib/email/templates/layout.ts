@@ -1,3 +1,4 @@
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { moneyToNumber, type MoneyInput } from "@/lib/money";
 
 export type EmailLayoutParams = {
@@ -10,7 +11,7 @@ export type EmailLayoutParams = {
 export function renderEmailLayout(params: EmailLayoutParams): { html: string; text: string } {
   const footer =
     params.footerNote ??
-    `${params.organizationName} — message transactionnel envoyé via Nova Gestion.`;
+    `${params.organizationName} — message transactionnel envoyé via ${APP_DISPLAY_NAME}.`;
 
   const html = `<!DOCTYPE html>
 <html lang="fr">

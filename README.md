@@ -1,4 +1,4 @@
-# Nova Gestion (ESTHER)
+# Joey & Joey (ESTHER)
 
 Application de gestion commerciale et pré-comptabilité pour PME — **PostgreSQL**, sessions signées, migrations versionnées, tests unitaires (Vitest) et E2E (Playwright).
 
@@ -155,7 +155,7 @@ Provider par défaut : **Resend** (`resend` npm). Les emails critiques (devis, f
 ```bash
 # .env
 EMAIL_PROVIDER=log
-EMAIL_FROM="Nova Gestion <no-reply@localhost.dev>"
+EMAIL_FROM="Joey & Joey <no-reply@localhost.dev>"
 ```
 
 Lancez l'app (`npm run dev`), créez un devis/facture et envoyez : le contenu apparaît dans les logs serveur `[email:log]`.

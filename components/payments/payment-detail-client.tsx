@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { Edit, Mail, Printer, X } from "lucide-react";
 import type { PaymentMethod, PaymentStatus } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
@@ -105,7 +105,7 @@ export function PaymentDetailClient({
   const [emailRecipient, setEmailRecipient] = useState(payment.customer.email ?? "");
   const [emailSubject, setEmailSubject] = useState(`Reçu de paiement ${payment.paymentNumber}`);
   const [emailMessage, setEmailMessage] = useState(
-    `Bonjour,\n\nVeuillez trouver ci-joint le reçu de votre paiement ${payment.paymentNumber}.\n\nCordialement,\nNova Gestion`,
+    `Bonjour,\n\nVeuillez trouver ci-joint le reçu de votre paiement ${payment.paymentNumber}.\n\nCordialement,\n${APP_DISPLAY_NAME}`,
   );
 
   async function handleReceipt() {

@@ -20,7 +20,7 @@ npx prisma migrate deploy
 npm run db:seed:production
 
 echo "→ Organisation admin…"
-npm run org:create -- --name "${ORG_NAME:-Nova Gestion}" --email "$ADMIN_EMAIL" --password "$ADMIN_PASSWORD"
+npm run org:create -- --name "${ORG_NAME:-Joey & Joey}" --email "$ADMIN_EMAIL" --password "$ADMIN_PASSWORD"
 
 if ! git remote get-url origin &>/dev/null; then
   echo "→ Repo GitHub…"

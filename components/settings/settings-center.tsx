@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import {
   Building2,
   Calculator,
@@ -102,7 +103,7 @@ export function SettingsCenter({ completion }: { completion: SettingsCompletionS
           <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
         </div>
         <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Configurez votre organisation Nova Gestion.
+          Configurez votre organisation {APP_DISPLAY_NAME}.
         </p>
       </div>
 

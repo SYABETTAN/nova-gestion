@@ -169,7 +169,7 @@ export async function seedItems(
         status,
         name,
         shortDescription: `${type === ItemType.SERVICE ? "Prestation" : "Produit"} exemple — ${name}`,
-        description: `Description fictive pour ${name}. Données de démonstration Nova Gestion.`,
+        description: `Description fictive pour ${name}. Données de démonstration Joey & Joey.`,
         categoryId: category.id,
         unitId: units[type === ItemType.SERVICE ? (i % 3 === 0 ? 1 : i % 3 === 1 ? 4 : 0) : 5].id,
         imageUrl: `/demo/item-placeholder.svg`,

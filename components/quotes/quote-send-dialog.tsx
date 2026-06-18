@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { sendQuoteEmailAction } from "@/server/actions/quote-status.actions";
 
 type QuoteSendDialogProps = {
@@ -33,9 +34,9 @@ export function QuoteSendDialog({
 }: QuoteSendDialogProps) {
   const [loading, setLoading] = useState(false);
   const [recipient, setRecipient] = useState(defaultRecipient ?? "");
-  const [subject, setSubject] = useState(`Devis ${quoteNumber} — Nova Gestion`);
+  const [subject, setSubject] = useState(`Devis ${quoteNumber} — ${APP_DISPLAY_NAME}`);
   const [message, setMessage] = useState(
-    "Bonjour,\n\nVeuillez trouver ci-joint notre devis. N'hésitez pas à nous contacter pour toute question.\n\nCordialement,\nL'équipe Nova Gestion",
+    `Bonjour,\n\nVeuillez trouver ci-joint notre devis. N'hésitez pas à nous contacter pour toute question.\n\nCordialement,\nL'équipe ${APP_DISPLAY_NAME}`,
   );
 
   async function handleSend() {

@@ -8,7 +8,7 @@ describe("template rendering", () => {
     dueDate: new Date("2026-01-15"),
     amountDue: 1250,
     daysOverdue: 15,
-    organizationName: "Nova Gestion",
+    organizationName: "Joey & Joey",
     includePaymentLink: true,
   });
 
@@ -25,7 +25,7 @@ describe("template rendering", () => {
   });
 
   it("Remplace {{organizationName}}", () => {
-    expect(renderReminderTemplate("{{organizationName}}", vars)).toContain("Nova Gestion");
+    expect(renderReminderTemplate("{{organizationName}}", vars)).toContain("Joey & Joey");
   });
 
   it("Remplace {{paymentLink}}", () => {

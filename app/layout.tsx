@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { APP_DESCRIPTION, getAppDisplayName } from "@/lib/branding";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -6,8 +7,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nova Gestion",
-  description: "Gestion commerciale et pré-comptabilité pour PME",
+  title: getAppDisplayName(process.env.NEXT_PUBLIC_APP_NAME),
+  description: APP_DESCRIPTION,
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: "/favicon.svg",

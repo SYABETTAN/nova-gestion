@@ -78,14 +78,14 @@ Configurer dans **Settings → Environment Variables** (Production) :
 | `SESSION_SECRET` | `openssl rand -hex 32` (≥ 32 car.) |
 | `APP_ENV` | `production` |
 | `NEXT_PUBLIC_APP_ENV` | `production` |
-| `NEXT_PUBLIC_APP_NAME` | `Nova Gestion` |
+| `NEXT_PUBLIC_APP_NAME` | `Joey & Joey` |
 | `NEXT_PUBLIC_APP_URL` | `https://votre-projet.vercel.app` |
 | `SEED_DEV_DATA` | `false` |
 | `ENABLE_DEV_LOGIN` | `false` |
 | `REGISTRATION_MODE` | `invite_only` ou `open_dev` (démo) |
 | `EMAIL_PROVIDER` | `resend` |
 | `RESEND_API_KEY` | clé Resend |
-| `EMAIL_FROM` | `Nova Gestion <onboarding@resend.dev>` |
+| `EMAIL_FROM` | `Joey & Joey <onboarding@resend.dev>` |
 | `STORAGE_PROVIDER` | `local` |
 | `STORAGE_PATH` | `/tmp/uploads` |
 

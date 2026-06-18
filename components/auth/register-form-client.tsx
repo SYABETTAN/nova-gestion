@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appDisplayName } from "@/lib/client-env";
 import { registerAction } from "@/server/actions/auth.actions";
 
 export function RegisterFormClient() {
@@ -29,7 +30,7 @@ export function RegisterFormClient() {
       <CardHeader>
         <CardTitle>Créer un compte</CardTitle>
         <CardDescription>
-          Créez votre organisation et accédez à Nova Gestion en tant que propriétaire.
+          Créez votre organisation et accédez à {appDisplayName()} en tant que propriétaire.
         </CardDescription>
       </CardHeader>
       <CardContent>

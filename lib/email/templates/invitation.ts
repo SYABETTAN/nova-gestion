@@ -1,3 +1,4 @@
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import { formatDate, renderEmailLayout } from "@/lib/email/templates/layout";
 
 export type TeamInvitationEmailTemplateParams = {
@@ -15,7 +16,7 @@ export function buildTeamInvitationEmail(params: TeamInvitationEmailTemplatePara
 
   const bodyHtml = [
     `<p>Bonjour,</p>`,
-    `<p><strong>${params.inviterName}</strong> (${params.inviterEmail}) vous invite à rejoindre l'équipe <strong>${params.organizationName}</strong> sur Nova Gestion.</p>`,
+    `<p><strong>${params.inviterName}</strong> (${params.inviterEmail}) vous invite à rejoindre l'équipe <strong>${params.organizationName}</strong> sur ${APP_DISPLAY_NAME}.</p>`,
     `<p>Rôle proposé : <strong>${params.roleName}</strong>.</p>`,
     `<p>Validité de l'invitation : jusqu'au ${formatDate(params.expiresAt)}.</p>`,
     `<p><a href="${params.inviteUrl}" style="display:inline-block;padding:10px 16px;background:#0f172a;color:#fff;text-decoration:none;border-radius:6px;">Accepter l'invitation</a></p>`,

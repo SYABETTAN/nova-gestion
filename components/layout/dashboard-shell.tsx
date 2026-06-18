@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/roles";
 import type { SessionUser } from "@/lib/permissions";
+import { appDisplayName, appShortLabel } from "@/lib/client-env";
 import { logoutAction } from "@/server/actions/auth.actions";
 
 const navItems = [
@@ -65,12 +66,12 @@ export function DashboardShell({ user, organizationName, searchSlot, children }:
       <aside className="hidden w-64 flex-col border-r bg-white lg:flex">
         <div className="border-b p-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-              NG
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
+              {appShortLabel()}
             </div>
             <div>
               <p className="font-semibold">{organizationName}</p>
-              <p className="text-xs text-[var(--color-muted-foreground)]">Nova Gestion</p>
+              <p className="text-xs text-[var(--color-muted-foreground)]">{appDisplayName()}</p>
             </div>
           </div>
         </div>

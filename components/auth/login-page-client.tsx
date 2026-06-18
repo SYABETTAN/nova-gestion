@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appDisplayName } from "@/lib/client-env";
 import { devLoginAction, loginAction } from "@/server/actions/auth.actions";
 
 const devLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true";
@@ -47,7 +48,7 @@ export function LoginPageClient({ publicSignupAllowed }: LoginPageClientProps) {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Connexion à Nova Gestion</CardTitle>
+          <CardTitle>Connexion à {appDisplayName()}</CardTitle>
           <CardDescription>Connectez-vous avec votre compte utilisateur.</CardDescription>
         </CardHeader>
         <CardContent>

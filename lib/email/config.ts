@@ -1,4 +1,5 @@
 import { isProduction } from "@/lib/env";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import type { EmailConfig, EmailProviderName } from "@/lib/email/types";
 
 export const EMAIL_NOT_CONFIGURED_ERROR =
@@ -34,7 +35,7 @@ export function getEmailConfig(): EmailConfig {
 
   return {
     provider,
-    from: from || "Nova Gestion <no-reply@localhost.dev>",
+    from: from || `${APP_DISPLAY_NAME} <no-reply@localhost.dev>`,
     replyTo,
     resendApiKey,
   };

@@ -29,8 +29,8 @@ export const DEMO_USERS = [
 ];
 
 export const DEMO_ORGANIZATION = {
-  name: "Nova Gestion",
-  legalName: "Nova Gestion SAS",
+  name: "Joey & Joey",
+  legalName: "Joey & Joey SAS",
   slug: "nova-gestion",
   siret: "12345678900012",
   vatNumber: "FR12123456789",
@@ -51,7 +51,7 @@ export const DEMO_ORGANIZATION = {
   fiscalYearStartMonth: 1,
   defaultPaymentTermsDays: 30,
   defaultInvoiceFooter:
-    "Nova Gestion SAS — SIRET 12345678900012 — TVA FR12123456789",
+    "Joey & Joey SAS — SIRET 12345678900012 — TVA FR12123456789",
   defaultQuoteFooter: "Devis valable 30 jours — Conditions générales sur demande.",
   primaryColor: "#2563eb",
   documentPrefix: "NG",

@@ -10,7 +10,7 @@ const envSchema = z.object({
     .string()
     .min(32, "SESSION_SECRET doit contenir au moins 32 caractères")
     .default(DEV_SESSION_SECRET),
-  NEXT_PUBLIC_APP_NAME: z.string().default("Nova Gestion"),
+  NEXT_PUBLIC_APP_NAME: z.string().default("Joey & Joey"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_ENV: z
     .enum(["development", "staging", "production"])
