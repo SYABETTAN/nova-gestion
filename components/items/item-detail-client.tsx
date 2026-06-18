@@ -15,7 +15,7 @@ import { formatCurrency, formatVatRate, moneyToNumber } from "@/lib/pricing";
 import type { SessionUser } from "@/lib/permissions";
 import { formatDate, formatDateShort } from "@/lib/utils";
 import { archiveItemAction, reactivateItemAction } from "@/server/actions/item.actions";
-import { assignItemTagAction, removeItemTagAction } from "@/server/actions/item-tag.actions";
+import { simulatedActionsVisible } from "@/lib/client-env";
 
 type ItemDetail = NonNullable<Awaited<ReturnType<typeof import("@/server/actions/item.actions").getItemByIdAction>>>;
 
@@ -40,7 +40,7 @@ export function ItemDetailClient({
   const invoiceCount = item.activities.filter((a) => a.type === "ADDED_TO_INVOICE").length;
 
   function placeholder(module: string) {
-    toast.info(`Module ${module} non encore disponible dans cette `);
+    toast.info(`Module ${module} non encore disponible.`);
   }
 
   return (
@@ -65,8 +65,12 @@ export function ItemDetailClient({
           <PermissionGate user={user} permission="ITEMS_UPDATE">
             <Button variant="outline" asChild><Link href={`/items/${item.id}/edit`}>Modifier</Link></Button>
           </PermissionGate>
-          <Button variant="outline" onClick={() => placeholder("devis")}><FileText className="h-4 w-4" />Ajouter à un devis</Button>
-          <Button variant="outline" onClick={() => placeholder("factures")}><Receipt className="h-4 w-4" />Ajouter à une facture</Button>
+          {simulatedActionsVisible() && (
+            <>
+              <Button variant="outline" onClick={() => placeholder("devis")}><FileText className="h-4 w-4" />Ajouter à un devis</Button>
+              <Button variant="outline" onClick={() => placeholder("factures")}><Receipt className="h-4 w-4" />Ajouter à une facture</Button>
+            </>
+          )}
           <PermissionGate user={user} permission="ITEMS_DELETE">
             {item.isArchived ? (
               <Button variant="secondary" onClick={async () => { await reactivateItemAction(item.id); toast.success("Réactivé"); }}>Réactiver</Button>

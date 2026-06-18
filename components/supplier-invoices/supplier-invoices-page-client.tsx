@@ -45,6 +45,7 @@ import {
 } from "@/lib/supplier-invoice-status";
 import type { SupplierInvoiceStats } from "@/lib/supplier-invoice-utils";
 import { isPositive } from "@/lib/money";
+import { simulatedActionsVisible } from "@/lib/client-env";
 import type { SessionUser } from "@/lib/permissions";
 import type { MoneyInput } from "@/lib/money";
 import { formatDateShort } from "@/lib/utils";
@@ -404,7 +405,7 @@ export function SupplierInvoicesPageClient({
                                 Valider
                               </DropdownMenuItem>
                             )}
-                            {inv.status === "VALIDATED" && inv.paymentStatus !== "PAID" && (
+                            {simulatedActionsVisible() && inv.status === "VALIDATED" && inv.paymentStatus !== "PAID" && (
                               <DropdownMenuItem
                                 onClick={() =>
                                   runAction(

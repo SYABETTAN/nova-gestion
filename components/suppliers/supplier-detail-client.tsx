@@ -52,6 +52,7 @@ import {
 import { isPositive, moneyAdd, moneyToNumber, type MoneyInput } from "@/lib/money";
 import type { SessionUser } from "@/lib/permissions";
 import { formatDate, formatDateShort } from "@/lib/utils";
+import { simulatedActionsVisible } from "@/lib/client-env";
 import {
   archiveSupplierAction,
   reactivateSupplierAction,
@@ -129,7 +130,7 @@ export function SupplierDetailClient({ user, supplier, allTags, supplierInvoices
   }
 
   function placeholderModule(name: string) {
-    toast.info(`Module ${name} non encore disponible dans cette `);
+    toast.info(`Module ${name} non encore disponible.`);
   }
 
   return (
@@ -181,9 +182,11 @@ export function SupplierDetailClient({ user, supplier, allTags, supplierInvoices
               </Link>
             </Button>
           </PermissionGate>
-          <Button variant="outline" onClick={() => placeholderModule("paiements fournisseurs")}>
-            <Wallet className="h-4 w-4" /> Créer un paiement fournisseur
-          </Button>
+          {simulatedActionsVisible() && (
+            <Button variant="outline" onClick={() => placeholderModule("paiements fournisseurs")}>
+              <Wallet className="h-4 w-4" /> Créer un paiement fournisseur
+            </Button>
+          )}
           <PermissionGate user={user} permission="SUPPLIERS_DELETE">
             {supplier.isArchived ? (
               <Button variant="secondary" onClick={handleReactivate}>Réactiver</Button>
