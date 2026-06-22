@@ -108,10 +108,10 @@ const blocks: HubBlock[] = [
       },
       {
         title: "Suivre mes ventes",
-        subtitle: "Indicateurs et statistiques",
-        href: "/dashboard?view=kpi",
+        subtitle: "Détail des ventes ligne par ligne",
+        href: "/sales-detail",
         icon: LineChart,
-        permission: "DASHBOARD_READ",
+        permission: "INVOICES_READ",
       },
     ],
   },
