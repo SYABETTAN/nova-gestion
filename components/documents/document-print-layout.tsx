@@ -1,7 +1,10 @@
 
+import { organizationNameForDocuments } from "@/lib/organization-display";
+
 type Organization = {
   name: string;
   legalName?: string | null;
+  slug?: string | null;
   addressLine1?: string | null;
   postalCode?: string | null;
   city?: string | null;
@@ -27,14 +30,13 @@ export function DocumentPrintLayout({
   footerText,
   children,
 }: DocumentPrintLayoutProps) {
+  const brandingName = organizationNameForDocuments(organization);
+
   return (
     <div className="mx-auto max-w-4xl bg-white p-8 text-slate-900 print:p-0">
       <header className="mb-8 flex items-start justify-between border-b pb-6">
         <div>
-          <p className="text-lg font-bold">{organization.name}</p>
-          {organization.legalName ? (
-            <p className="text-sm text-slate-600">{organization.legalName}</p>
-          ) : null}
+          <p className="text-lg font-bold">{brandingName}</p>
           <p className="mt-2 text-sm text-slate-600">
             {[organization.addressLine1, organization.postalCode, organization.city]
               .filter(Boolean)

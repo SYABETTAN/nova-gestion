@@ -8,6 +8,7 @@ import { formatDateShort } from "@/lib/utils";
 import type { InvoicePaymentStatus, InvoiceStatus } from "@prisma/client";
 import type { MoneyInput } from "@/lib/money";
 import { moneyToNumber } from "@/lib/money";
+import { organizationNameForDocuments } from "@/lib/organization-display";
 
 type InvoicePreviewProps = {
   invoice: {
@@ -93,7 +94,9 @@ export function InvoicePreview({ invoice, organization, compact, showPaymentSumm
         <div>
           {organization && (
             <>
-              <p className="text-lg font-bold">{organization.legalName ?? organization.name}</p>
+              <p className="text-lg font-bold">
+                {organizationNameForDocuments(organization)}
+              </p>
               <p className="text-sm text-[var(--color-muted-foreground)]">
                 {organization.addressLine1}
                 {organization.addressLine2 ? `, ${organization.addressLine2}` : ""}

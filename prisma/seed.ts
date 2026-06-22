@@ -24,6 +24,7 @@ import { cleanupAccountingModule, seedAccounting } from "./seed-accounting";
 import { seedExportsDocuments } from "./seed-exports-documents";
 import { seedSettings } from "./seed-settings";
 import { seedSearch } from "./seed-search";
+import { migrateLegacyOrganizationBranding } from "../lib/organization-display";
 
 async function cleanupCommercialModules(prisma: PrismaClient, organizationId: string) {
   await prisma.supplierInvoiceActivity.deleteMany({ where: { organizationId } });
@@ -102,6 +103,12 @@ async function main() {
 
   // Organization & users (dev fixtures only)
   if (process.env.SEED_DEV_DATA !== "true") {
+    const brandingMigration = await migrateLegacyOrganizationBranding(prisma);
+    if (brandingMigration.organizations > 0 || brandingMigration.users > 0) {
+      console.log(
+        `   Branding legacy migré : ${brandingMigration.organizations} org(s), ${brandingMigration.users} user(s)`,
+      );
+    }
     console.log("✅ Bootstrap seed completed (roles & permissions).");
     console.log("   Pour charger des données d'exemple : SEED_DEV_DATA=true npm run db:seed");
     return;
@@ -116,6 +123,13 @@ async function main() {
     update: DEMO_ORGANIZATION,
     create: DEMO_ORGANIZATION,
   });
+
+  const brandingMigration = await migrateLegacyOrganizationBranding(prisma);
+  if (brandingMigration.organizations > 0 || brandingMigration.users > 0) {
+    console.log(
+      `   Branding legacy migré : ${brandingMigration.organizations} org(s), ${brandingMigration.users} user(s)`,
+    );
+  }
 
   // Users & memberships
   const ownerUser = await prisma.user.upsert({

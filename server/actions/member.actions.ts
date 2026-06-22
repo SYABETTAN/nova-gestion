@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import {
   inviteMemberSchema,
   updateMemberRoleSchema,
@@ -126,7 +127,7 @@ export async function inviteMemberAction(formData: FormData) {
     });
 
     const template = buildTeamInvitationEmail({
-      organizationName: org.name,
+      organizationName: resolveOrganizationDisplayName(org.name, org.slug),
       inviterName: user.name,
       inviterEmail: user.email,
       inviteeEmail: email,

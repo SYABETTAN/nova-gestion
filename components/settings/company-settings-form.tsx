@@ -11,6 +11,10 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import type { SessionUser } from "@/lib/permissions";
+import {
+  resolveOrganizationDisplayName,
+  resolveOrganizationLegalName,
+} from "@/lib/organization-display";
 import { updateOrganizationAction } from "@/server/actions/organization.actions";
 
 type CompanySettingsFormProps = {
@@ -20,6 +24,12 @@ type CompanySettingsFormProps = {
 
 export function CompanySettingsForm({ organization, user }: CompanySettingsFormProps) {
   const [loading, setLoading] = useState(false);
+  const displayName = resolveOrganizationDisplayName(organization.name, organization.slug);
+  const legalDisplayName = resolveOrganizationLegalName(
+    organization.legalName,
+    organization.name,
+    organization.slug,
+  );
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -42,11 +52,11 @@ export function CompanySettingsForm({ organization, user }: CompanySettingsFormP
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="name">Nom commercial</Label>
-            <Input id="name" name="name" defaultValue={organization.name} readOnly={!canEdit(user)} />
+            <Input id="name" name="name" defaultValue={displayName} readOnly={!canEdit(user)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="legalName">Nom légal</Label>
-            <Input id="legalName" name="legalName" defaultValue={organization.legalName} readOnly={!canEdit(user)} />
+            <Input id="legalName" name="legalName" defaultValue={legalDisplayName} readOnly={!canEdit(user)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

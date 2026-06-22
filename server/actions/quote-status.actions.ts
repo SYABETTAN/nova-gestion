@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import {
   canAcceptQuote,
   canCancelQuote,
@@ -92,7 +93,10 @@ export async function sendQuoteEmailAction(id: string, formData: FormData) {
     }
 
     const template = buildQuoteEmail({
-      organizationName: quote.organization.name,
+      organizationName: resolveOrganizationDisplayName(
+        quote.organization.name,
+        quote.organization.slug,
+      ),
       recipientName: quote.customer.name,
       quoteNumber: quote.quoteNumber,
       quoteTitle: quote.title,

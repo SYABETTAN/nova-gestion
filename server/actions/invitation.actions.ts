@@ -17,6 +17,7 @@ import {
   validateInvitationForAcceptance,
 } from "@/lib/invitations";
 import { acceptInvitationSchema } from "@/lib/validators";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 
 export type InvitationPreviewResult =
   | {
@@ -61,7 +62,10 @@ export async function getInvitationPreviewAction(
   return {
     valid: true,
     email,
-    organizationName: invitation.organization.name,
+    organizationName: resolveOrganizationDisplayName(
+      invitation.organization.name,
+      invitation.organization.slug,
+    ),
     roleName: invitation.role.name,
     roleKey: invitation.role.key,
     inviterName: invitation.invitedBy.name,

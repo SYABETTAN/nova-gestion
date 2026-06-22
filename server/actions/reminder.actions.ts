@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import { generateNextNumber } from "@/lib/numbering";
 import {
   generateReminderHistoryCsv,
@@ -106,7 +107,10 @@ async function processSendReminder(
 
   if (input.channel === "EMAIL") {
     const template = buildReminderEmail({
-      organizationName: invoice.organization.name,
+      organizationName: resolveOrganizationDisplayName(
+        invoice.organization.name,
+        invoice.organization.slug,
+      ),
       recipientName: invoice.customer.name,
       invoiceNumber: invoice.invoiceNumber,
       subject: input.subject,
@@ -287,7 +291,7 @@ export async function getInvoiceReminderPreviewAction(invoiceId: string) {
     amountDue: moneyToNumber(invoice.amountDue),
     currency: invoice.currency,
     daysOverdue: invoice.daysOverdue,
-    organizationName: org.name,
+    organizationName: resolveOrganizationDisplayName(org.name, org.slug),
     includePaymentLink: true,
   });
 
@@ -378,7 +382,7 @@ export async function sendBulkReminderEmailAction(input: unknown) {
         amountDue: moneyToNumber(invoice.amountDue),
         currency: invoice.currency,
         daysOverdue: invoice.daysOverdue,
-        organizationName: org.name,
+        organizationName: resolveOrganizationDisplayName(org.name, org.slug),
         includePaymentLink: true,
       });
 

@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/pricing";
 import { formatDateShort } from "@/lib/utils";
 import type { MoneyInput } from "@/lib/money";
 import { moneyToNumber } from "@/lib/money";
+import { organizationNameForDocuments } from "@/lib/organization-display";
 
 type QuotePreviewProps = {
   quote: {
@@ -83,7 +84,7 @@ export function QuotePreview({ quote, organization, compact }: QuotePreviewProps
         <div>
           {organization && (
             <>
-              <p className="text-lg font-bold">{organization.legalName ?? organization.name}</p>
+              <p className="text-lg font-bold">{organizationNameForDocuments(organization)}</p>
               <p className="text-sm text-[var(--color-muted-foreground)]">
                 {organization.addressLine1}
                 {organization.addressLine2 ? `, ${organization.addressLine2}` : ""}

@@ -4,11 +4,13 @@ import { formatCurrency } from "@/lib/pricing";
 import { isPositive } from "@/lib/money";
 import { formatDateShort } from "@/lib/utils";
 import type { MoneyInput } from "@/lib/money";
+import { organizationNameForDocuments } from "@/lib/organization-display";
 
 type ReceiptProps = {
   organization: {
     name: string;
     legalName: string;
+    slug?: string | null;
     addressLine1: string | null;
     addressLine2: string | null;
     postalCode: string | null;
@@ -38,15 +40,17 @@ type ReceiptProps = {
 };
 
 export function PaymentReceiptView({ organization, payment }: ReceiptProps) {
+  const brandingName = organizationNameForDocuments(organization);
+
   return (
     <div className="mx-auto max-w-2xl bg-white p-8 print:p-12">
       <div className="mb-8 flex items-start justify-between">
         <div>
           {organization.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={organization.logoUrl} alt={organization.name} className="mb-4 h-12" />
+            <img src={organization.logoUrl} alt={brandingName} className="mb-4 h-12" />
           )}
-          <h1 className="text-xl font-bold">{organization.legalName}</h1>
+          <h1 className="text-xl font-bold">{brandingName}</h1>
           <p className="text-sm text-slate-600">
             {organization.addressLine1}
             {organization.postalCode && `, ${organization.postalCode} ${organization.city}`}

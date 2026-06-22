@@ -2,6 +2,7 @@ import type { DocumentType } from "@prisma/client";
 import { uploadAndCreateDocument } from "@/lib/documents/document-storage";
 import { generateInvoicePdfBuffer } from "@/lib/pdf/invoice-pdf";
 import { generateQuotePdfBuffer } from "@/lib/pdf/quote-pdf";
+import { organizationNameForDocuments } from "@/lib/organization-display";
 import type { MoneyInput } from "@/lib/money";
 import { moneyToNumber } from "@/lib/money";
 import { isBillableLineType } from "@/lib/quote-calculations";
@@ -19,7 +20,7 @@ type InvoiceForPdf = {
   totalIncludingTax: unknown;
   amountDue: unknown;
   customer: { name: string };
-  organization: { name: string };
+  organization: { name: string; legalName?: string | null; slug?: string | null };
   lines: Array<{
     name: string;
     lineType: string;
@@ -41,7 +42,7 @@ type QuoteForPdf = {
   totalVatAmount: unknown;
   totalIncludingTax: unknown;
   customer: { name: string };
-  organization: { name: string };
+  organization: { name: string; legalName?: string | null; slug?: string | null };
   lines: Array<{
     name: string;
     lineType: QuoteLineType;
@@ -68,7 +69,7 @@ export async function storeInvoicePdf(params: {
     dueDate: invoice.dueDate,
     currency: invoice.currency,
     customerName: invoice.customer.name,
-    organizationName: invoice.organization.name,
+    organizationName: organizationNameForDocuments(invoice.organization),
     lines: billableLines.map((l) => ({
       name: l.name,
       quantity: l.quantity as MoneyInput,
@@ -113,7 +114,7 @@ export async function storeQuotePdf(params: {
     validUntil: quote.validUntil,
     currency: quote.currency,
     customerName: quote.customer.name,
-    organizationName: quote.organization.name,
+    organizationName: organizationNameForDocuments(quote.organization),
     lines: billableLines.map((l) => ({
       name: l.name,
       quantity: l.quantity as MoneyInput,

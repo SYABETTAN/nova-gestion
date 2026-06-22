@@ -8,6 +8,7 @@ import { createExportJob, completeExportJob, failExportJob } from "@/lib/export/
 import { generateExportContent, estimateExportRowCount } from "@/lib/export/generate-export";
 import { exportRequestSchema } from "@/lib/export-validators";
 import { prisma } from "@/lib/prisma";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import { hasPermission, requirePermission } from "@/lib/permissions";
 
 export async function listAvailableExportsAction() {
@@ -80,7 +81,7 @@ export async function requestExportAction(input: Record<string, unknown>) {
   try {
     const result = await generateExportContent(
       user.organizationId,
-      organization.name,
+      resolveOrganizationDisplayName(organization.name, organization.slug),
       type,
       format,
       filters,

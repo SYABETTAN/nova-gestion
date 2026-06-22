@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { APP_DISPLAY_NAME } from "@/lib/branding";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
@@ -145,7 +146,9 @@ export async function previewReminderTemplateAction(templateId: string, invoiceI
     amountDue: invoice?.amountDue ?? 1250,
     currency: invoice?.currency ?? "EUR",
     daysOverdue: 15,
-    organizationName: org?.name ?? APP_DISPLAY_NAME,
+    organizationName: org
+      ? resolveOrganizationDisplayName(org.name, org.slug)
+      : APP_DISPLAY_NAME,
     includePaymentLink: true,
   });
 

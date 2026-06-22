@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { DashboardPeriodFilter } from "@/components/dashboard/dashboard-period-filter";
+import { DashboardViewTabs } from "@/components/dashboard/dashboard-view-tabs";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   CashInChart,
@@ -71,13 +72,16 @@ export function DashboardPageClient({
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+        <div className="space-y-3">
+          <DashboardViewTabs active="kpi" />
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+            </div>
+            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+              {organizationName} ({ROLE_LABELS[user.roleKey]}) — {periodLabel}
+            </p>
           </div>
-          <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-            {organizationName} — {user.name} ({ROLE_LABELS[user.roleKey]}) — {periodLabel}
-          </p>
         </div>
         <div className="flex flex-col gap-3 sm:items-end">
           <DashboardPeriodFilter preset={preset} startDate={startDate} endDate={endDate} />

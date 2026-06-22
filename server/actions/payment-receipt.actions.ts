@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import { sendPaymentReceiptSimulationSchema } from "@/lib/payment-validators";
 import { getPaymentByIdQuery } from "@/lib/payments";
 import { createPaymentActivity } from "@/server/actions/payment.actions";
@@ -78,7 +79,7 @@ export async function sendPaymentReceiptEmailAction(paymentId: string, input: un
       payment.allocations[0]?.invoice?.invoiceNumber ?? null;
 
     const template = buildPaymentReceiptEmail({
-      organizationName: org.name,
+      organizationName: resolveOrganizationDisplayName(org.name, org.slug),
       recipientName: payment.customer.name,
       paymentNumber: payment.paymentNumber,
       invoiceNumber,

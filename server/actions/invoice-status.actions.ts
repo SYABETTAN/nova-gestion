@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { createAuditLog } from "@/lib/audit";
+import { resolveOrganizationDisplayName } from "@/lib/organization-display";
 import { calculateInvoiceTotals, isBillableLineType } from "@/lib/invoice-calculations";
 import {
   canCancelInvoice,
@@ -176,7 +177,10 @@ export async function sendInvoiceEmailAction(id: string, formData: FormData) {
     }
 
     const template = buildInvoiceEmail({
-      organizationName: invoice.organization.name,
+      organizationName: resolveOrganizationDisplayName(
+        invoice.organization.name,
+        invoice.organization.slug,
+      ),
       recipientName: invoice.customer.name,
       invoiceNumber: invoice.invoiceNumber,
       invoiceTitle: invoice.title,

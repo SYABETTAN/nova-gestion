@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Building2,
   CreditCard,
@@ -13,6 +13,7 @@ import {
   FileStack,
   FileText,
   Hash,
+  Home,
   Receipt,
   LayoutDashboard,
   Search,
@@ -27,11 +28,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/roles";
 import type { SessionUser } from "@/lib/permissions";
-import { appDisplayName, appShortLabel } from "@/lib/client-env";
+import { appShortLabel } from "@/lib/client-env";
 import { logoutAction } from "@/server/actions/auth.actions";
 
 const navItems = [
-  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Accueil", icon: Home },
+  { href: "/dashboard?view=kpi", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/search", label: "Recherche", icon: Search },
   { href: "/exports", label: "Exports", icon: FileOutput },
   { href: "/documents", label: "Documents", icon: FileStack },
@@ -60,6 +62,17 @@ type DashboardShellProps = {
 
 export function DashboardShell({ user, organizationName, searchSlot, children }: DashboardShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isKpiView = pathname === "/dashboard" && searchParams.get("view") === "kpi";
+
+  function isActive(href: string): boolean {
+    const [hrefPath, hrefQuery] = href.split("?");
+    if (hrefPath === "/dashboard") {
+      // Distinguish "Accueil" (hub) from "Tableau de bord" (KPI) via the view param.
+      return hrefQuery?.includes("view=kpi") ? isKpiView : pathname === "/dashboard" && !isKpiView;
+    }
+    return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -71,14 +84,13 @@ export function DashboardShell({ user, organizationName, searchSlot, children }:
             </div>
             <div>
               <p className="font-semibold">{organizationName}</p>
-              <p className="text-xs text-[var(--color-muted-foreground)]">{appDisplayName()}</p>
             </div>
           </div>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
@@ -108,7 +120,7 @@ export function DashboardShell({ user, organizationName, searchSlot, children }:
           </div>
           <div className="flex shrink-0 items-center gap-4">
             <div className="text-right text-sm">
-              <p className="font-medium">{user.name}</p>
+              <p className="font-medium">{organizationName}</p>
               <p className="text-[var(--color-muted-foreground)]">
                 {ROLE_LABELS[user.roleKey] ?? user.roleKey}
               </p>

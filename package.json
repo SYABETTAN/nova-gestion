@@ -26,6 +26,7 @@
     "import:esther-real-data": "tsx scripts/import-esther-real-data.ts",
     "seed:esther-real-data": "tsx scripts/import-esther-real-data.ts",
     "org:create": "tsx scripts/create-organization.ts",
+    "migrate:legacy-branding": "tsx scripts/migrate-legacy-branding.ts",
     "db:reset": "prisma migrate reset --force",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
