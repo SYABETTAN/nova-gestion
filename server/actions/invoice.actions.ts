@@ -23,6 +23,7 @@ import {
   getInvoiceFormDataQuery,
   getInvoicesForExportQuery,
   getInvoiceStatsQuery,
+  listInvoicesForSageGridQuery,
   listInvoicesQuery,
 } from "@/lib/invoices";
 import { getQuoteByIdQuery } from "@/lib/quotes";
@@ -203,6 +204,17 @@ export async function getInvoiceStatsAction() {
   const user = await requireAuth();
   requirePermission(user, "INVOICES_READ");
   return getInvoiceStatsQuery(user.organizationId);
+}
+
+export async function listInvoicesForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "INVOICES_READ");
+  const parsed = invoiceFilterSchema.safeParse(searchParams);
+  const filters = parsed.success ? parsed.data : {};
+  const criteria = typeof searchParams.criteria === "string" ? searchParams.criteria : undefined;
+  return listInvoicesForSageGridQuery(user.organizationId, { ...filters, criteria });
 }
 
 export async function getInvoiceByIdAction(id: string) {

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { InvoiceFilterInput } from "@/lib/invoice-validators";
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 function safeDate(value?: string): Date | undefined {
   if (!value) return undefined;
@@ -276,4 +277,198 @@ export async function getInvoiceByQuoteIdQuery(organizationId: string, quoteId: 
     where: { organizationId, quoteId },
     select: { id: true, invoiceNumber: true },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Grille Factures « façon Sage »
+// ---------------------------------------------------------------------------
+
+export type InvoiceGridCriteria =
+  | "ALL"
+  | "PROVISIONAL"
+  | "SETTLED"
+  | "TO_REMIND"
+  | "UNPAID"
+  | "VALIDATED_UNPAID"
+  | "ACCOUNTED"
+  | "NOT_ACCOUNTED";
+
+const INVOICE_GRID_CRITERIA: InvoiceGridCriteria[] = [
+  "ALL",
+  "PROVISIONAL",
+  "SETTLED",
+  "TO_REMIND",
+  "UNPAID",
+  "VALIDATED_UNPAID",
+  "ACCOUNTED",
+  "NOT_ACCOUNTED",
+];
+
+export function parseInvoiceGridCriteria(value?: string | null): InvoiceGridCriteria {
+  return value && (INVOICE_GRID_CRITERIA as string[]).includes(value)
+    ? (value as InvoiceGridCriteria)
+    : "ALL";
+}
+
+/** Identifiants des factures déjà comptabilisées (écriture issue d'une facture client). */
+export async function getAccountedInvoiceIdSet(organizationId: string): Promise<Set<string>> {
+  const entries = await prisma.accountingEntry.findMany({
+    where: { organizationId, sourceType: "CUSTOMER_INVOICE", sourceId: { not: null } },
+    select: { sourceId: true },
+  });
+  return new Set(
+    entries.map((e) => e.sourceId).filter((id): id is string => Boolean(id)),
+  );
+}
+
+function buildCriteriaWhere(
+  criteria: InvoiceGridCriteria,
+  accountedIds: Set<string>,
+): Prisma.InvoiceWhereInput | null {
+  switch (criteria) {
+    case "PROVISIONAL":
+      return { status: "DRAFT" };
+    case "SETTLED":
+      return { OR: [{ paymentStatus: "PAID" }, { status: "PAID" }] };
+    case "TO_REMIND":
+      return { OR: [{ status: "OVERDUE" }, { paymentStatus: "OVERDUE" }] };
+    case "UNPAID":
+      return {
+        status: { notIn: ["DRAFT", "CANCELLED", "CREDITED", "PAID"] },
+        amountDue: { gt: 0 },
+      };
+    case "VALIDATED_UNPAID":
+      return {
+        status: { in: ["VALIDATED", "SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        amountDue: { gt: 0 },
+      };
+    case "ACCOUNTED":
+      return { id: { in: [...accountedIds] } };
+    case "NOT_ACCOUNTED":
+      return { id: { notIn: [...accountedIds] } };
+    case "ALL":
+    default:
+      return null;
+  }
+}
+
+export type InvoiceGridRow = {
+  id: string;
+  invoiceNumber: string;
+  type: string;
+  status: import("@prisma/client").InvoiceStatus;
+  paymentStatus: import("@prisma/client").InvoicePaymentStatus;
+  issueDate: Date;
+  dueDate: Date;
+  paymentTermsDays: number;
+  customerId: string;
+  customerName: string;
+  companyName: string;
+  customerNumber: string;
+  country: string;
+  totalExcludingTax: number;
+  totalVatAmount: number;
+  totalIncludingTax: number;
+  amountPaid: number;
+  amountDue: number;
+  currency: string;
+  isAccounted: boolean;
+};
+
+export type InvoiceGridResult = {
+  invoices: InvoiceGridRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totals: {
+    totalExcludingTax: number;
+    totalVatAmount: number;
+    totalIncludingTax: number;
+    amountDue: number;
+  };
+  exercise: { from: Date | null; to: Date | null };
+};
+
+export async function listInvoicesForSageGridQuery(
+  organizationId: string,
+  filters: Partial<InvoiceFilterInput> & { criteria?: string },
+): Promise<InvoiceGridResult> {
+  const page = filters.page ?? 1;
+  const pageSize = filters.pageSize ?? 50;
+  const criteria = parseInvoiceGridCriteria(filters.criteria);
+
+  // Toujours nécessaire : sert à la fois au filtre « comptabilisée » et à la colonne.
+  const accountedIds = await getAccountedInvoiceIdSet(organizationId);
+
+  const base = buildInvoiceWhere(organizationId, filters);
+  const criteriaWhere = buildCriteriaWhere(criteria, accountedIds);
+  const where: Prisma.InvoiceWhereInput = criteriaWhere
+    ? { AND: [base, criteriaWhere] }
+    : base;
+
+  const skip = (page - 1) * pageSize;
+
+  const [rows, total, agg] = await Promise.all([
+    prisma.invoice.findMany({
+      where,
+      include: {
+        customer: { select: { id: true, name: true, legalName: true, customerNumber: true } },
+        billingAddress: { select: { country: true } },
+      },
+      orderBy: { issueDate: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.invoice.count({ where }),
+    prisma.invoice.aggregate({
+      where,
+      _sum: {
+        totalExcludingTax: true,
+        totalVatAmount: true,
+        totalIncludingTax: true,
+        amountDue: true,
+      },
+      _min: { issueDate: true },
+      _max: { issueDate: true },
+    }),
+  ]);
+
+  const invoices: InvoiceGridRow[] = rows.map((r) => ({
+    id: r.id,
+    invoiceNumber: r.invoiceNumber,
+    type: r.type,
+    status: r.status,
+    paymentStatus: r.paymentStatus,
+    issueDate: r.issueDate,
+    dueDate: r.dueDate,
+    paymentTermsDays: r.paymentTermsDays,
+    customerId: r.customerId,
+    customerName: r.customer.name,
+    companyName: r.customer.legalName ?? r.customer.name,
+    customerNumber: r.customer.customerNumber,
+    country: r.billingAddress?.country ?? "",
+    totalExcludingTax: moneyToNumber(r.totalExcludingTax),
+    totalVatAmount: moneyToNumber(r.totalVatAmount),
+    totalIncludingTax: moneyToNumber(r.totalIncludingTax),
+    amountPaid: moneyToNumber(r.amountPaid),
+    amountDue: moneyToNumber(r.amountDue),
+    currency: r.currency,
+    isAccounted: accountedIds.has(r.id),
+  }));
+
+  return {
+    invoices,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    totals: {
+      totalExcludingTax: moneyToNumber(agg._sum.totalExcludingTax ?? 0),
+      totalVatAmount: moneyToNumber(agg._sum.totalVatAmount ?? 0),
+      totalIncludingTax: moneyToNumber(agg._sum.totalIncludingTax ?? 0),
+      amountDue: moneyToNumber(agg._sum.amountDue ?? 0),
+    },
+    exercise: { from: agg._min.issueDate ?? null, to: agg._max.issueDate ?? null },
+  };
 }
