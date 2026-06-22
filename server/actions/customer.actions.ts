@@ -385,6 +385,23 @@ export async function searchCustomersForSelectAction(query = "") {
   return searchCustomersForSelectQuery(user.organizationId, query, 20);
 }
 
+/**
+ * Création rapide d'un client depuis l'écran facture.
+ * Renvoie l'option prête à sélectionner (multi-tenant strict).
+ */
+export async function quickCreateCustomerAction(formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_CREATE");
+
+  const result = await createCustomerAction(formData);
+  if (!result.success || !result.customerId) {
+    return { success: false as const, error: result.error ?? "Création impossible" };
+  }
+  const customer = await getCustomerOptionByIdQuery(user.organizationId, result.customerId);
+  if (!customer) return { success: false as const, error: "Client introuvable après création" };
+  return { success: true as const, customer };
+}
+
 export async function getCustomerFinancialSummaryAction(customerId: string) {
   const user = await requireAuth();
   requirePermission(user, "CUSTOMERS_READ");
@@ -399,12 +416,15 @@ export async function getCustomerForInvoiceFormAction(customerId: string) {
     select: {
       id: true,
       name: true,
+      legalName: true,
       displayName: true,
       customerNumber: true,
       email: true,
       phone: true,
       siret: true,
+      vatNumber: true,
       defaultPaymentTermsDays: true,
+      defaultVatRate: true,
       contacts: {
         where: { isArchived: false },
         select: { id: true, firstName: true, lastName: true, email: true, isPrimary: true },
@@ -416,7 +436,10 @@ export async function getCustomerForInvoiceFormAction(customerId: string) {
           type: true,
           label: true,
           addressLine1: true,
+          addressLine2: true,
+          postalCode: true,
           city: true,
+          country: true,
           isDefault: true,
         },
         orderBy: [{ isDefault: "desc" }, { type: "asc" }],

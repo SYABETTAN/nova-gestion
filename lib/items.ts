@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { hasFilterValue } from "@/lib/filter-params";
 import type { ItemFilterInput } from "@/lib/item-validators";
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 const defaultInclude = {
   category: true,
@@ -53,6 +54,123 @@ export function buildItemWhere(
         }
       : {}),
   };
+}
+
+export type ItemSelectOption = {
+  id: string;
+  itemNumber: string;
+  name: string;
+  type: string;
+  salePriceExcludingTax: number;
+  salePriceIncludingTax: number;
+  defaultVatRate: number;
+  shortDescription: string | null;
+  description: string | null;
+  sku: string | null;
+  barcode: string | null;
+  unitSymbol: string | null;
+  categoryName: string | null;
+  isStockable: boolean;
+  stockQuantity: number;
+};
+
+function mapItemSelectOption(item: {
+  id: string;
+  itemNumber: string;
+  name: string;
+  type: string;
+  salePriceExcludingTax: import("@/lib/money").MoneyInput;
+  salePriceIncludingTax: import("@/lib/money").MoneyInput;
+  defaultVatRate: import("@/lib/money").MoneyInput;
+  shortDescription: string | null;
+  description: string | null;
+  sku: string | null;
+  barcode: string | null;
+  isStockable: boolean;
+  stockQuantity: import("@/lib/money").MoneyInput;
+  unit: { symbol: string } | null;
+  category: { name: string } | null;
+}): ItemSelectOption {
+  return {
+    id: item.id,
+    itemNumber: item.itemNumber,
+    name: item.name,
+    type: item.type,
+    salePriceExcludingTax: moneyToNumber(item.salePriceExcludingTax),
+    salePriceIncludingTax: moneyToNumber(item.salePriceIncludingTax),
+    defaultVatRate: moneyToNumber(item.defaultVatRate),
+    shortDescription: item.shortDescription,
+    description: item.description,
+    sku: item.sku,
+    barcode: item.barcode,
+    unitSymbol: item.unit?.symbol ?? null,
+    categoryName: item.category?.name ?? null,
+    isStockable: item.isStockable,
+    stockQuantity: moneyToNumber(item.stockQuantity),
+  };
+}
+
+const ITEM_SELECT_FIELDS = {
+  id: true,
+  itemNumber: true,
+  name: true,
+  type: true,
+  salePriceExcludingTax: true,
+  salePriceIncludingTax: true,
+  defaultVatRate: true,
+  shortDescription: true,
+  description: true,
+  sku: true,
+  barcode: true,
+  isStockable: true,
+  stockQuantity: true,
+  unit: { select: { symbol: true } },
+  category: { select: { name: true } },
+} satisfies Prisma.ItemSelect;
+
+export async function searchItemsForSelectQuery(
+  organizationId: string,
+  query: string,
+  limit = 20,
+): Promise<ItemSelectOption[]> {
+  const q = query.trim();
+  const where: Prisma.ItemWhereInput = {
+    organizationId,
+    isArchived: false,
+    status: "ACTIVE",
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { itemNumber: { contains: q, mode: "insensitive" } },
+            { sku: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+            { shortDescription: { contains: q, mode: "insensitive" } },
+            { barcode: { contains: q, mode: "insensitive" } },
+            { category: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+
+  const items = await prisma.item.findMany({
+    where,
+    select: ITEM_SELECT_FIELDS,
+    orderBy: { name: "asc" },
+    take: limit,
+  });
+  return items.map(mapItemSelectOption);
+}
+
+export async function getItemSelectOptionByIdQuery(
+  organizationId: string,
+  itemId: string,
+): Promise<ItemSelectOption | null> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, organizationId },
+    select: ITEM_SELECT_FIELDS,
+  });
+  return item ? mapItemSelectOption(item) : null;
 }
 
 export async function listItemsQuery(

@@ -16,10 +16,12 @@ import {
   buildItemWhere,
   getItemByIdQuery,
   getItemCategoriesQuery,
+  getItemSelectOptionByIdQuery,
   getItemStatsQuery,
   getItemTagsQuery,
   getItemUnitsQuery,
   listItemsQuery,
+  searchItemsForSelectQuery,
 } from "@/lib/items";
 import {
   getItemSalesReportQuery,
@@ -95,6 +97,35 @@ export async function getItemByIdAction(id: string) {
   const user = await requireAuth();
   requirePermission(user, "ITEMS_READ");
   return getItemByIdQuery(user.organizationId, id);
+}
+
+export async function searchItemsForSelectAction(query = "") {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return searchItemsForSelectQuery(user.organizationId, query, 20);
+}
+
+export async function getItemForInvoiceFormAction(itemId: string) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return getItemSelectOptionByIdQuery(user.organizationId, itemId);
+}
+
+/**
+ * Création rapide d'un article depuis l'écran facture.
+ * Renvoie l'option prête à insérer dans une ligne (multi-tenant).
+ */
+export async function quickCreateItemAction(formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_CREATE");
+
+  const result = await createItemAction(formData);
+  if (!result.success || !result.itemId) {
+    return { success: false as const, error: result.error ?? "Création impossible" };
+  }
+  const item = await getItemSelectOptionByIdQuery(user.organizationId, result.itemId);
+  if (!item) return { success: false as const, error: "Article introuvable après création" };
+  return { success: true as const, item };
 }
 
 export async function getItemCategoriesAction() {
