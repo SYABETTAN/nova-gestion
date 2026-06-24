@@ -14,11 +14,13 @@ import {
 } from "@/lib/supplier-validators";
 import { parseTagIds } from "@/lib/supplier-utils";
 import {
+  buildSuppliersGridCsv,
   getAllSupplierTagsQuery,
   getSupplierByIdQuery,
   getSupplierCategoriesQuery,
   getSupplierStatsQuery,
   listSuppliersForExportQuery,
+  listSuppliersForGridQuery,
   listSuppliersQuery,
 } from "@/lib/suppliers";
 
@@ -40,6 +42,42 @@ export async function listSuppliersAction(searchParams: Record<string, string | 
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
 
   return listSuppliersQuery(user.organizationId, filters);
+}
+
+function parseSupplierGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    status: searchParams.status || undefined,
+    city: searchParams.city || undefined,
+    country: searchParams.country || undefined,
+    balance: searchParams.balance || undefined,
+    archived: (searchParams.archived as "true" | "false" | "only" | undefined) || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listSuppliersForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "SUPPLIERS_READ");
+  return listSuppliersForGridQuery(user.organizationId, parseSupplierGridFilters(searchParams));
+}
+
+export async function exportSuppliersGridCsvAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "SUPPLIERS_READ");
+  const result = await listSuppliersForGridQuery(user.organizationId, {
+    ...parseSupplierGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildSuppliersGridCsv(result.rows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `fournisseurs-${date}.csv` };
 }
 
 export async function getSupplierStatsAction() {

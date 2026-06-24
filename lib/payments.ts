@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { PaymentFilterInput } from "@/lib/payment-validators";
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 const defaultInclude = {
   customer: { select: { id: true, name: true, customerNumber: true, email: true } },
@@ -102,6 +103,132 @@ function buildOrderBy(
     default:
       return { paymentDate: order };
   }
+}
+
+export type PaymentGridRow = {
+  id: string;
+  paymentNumber: string;
+  paymentDate: string;
+  customerId: string | null;
+  customerName: string;
+  companyName: string;
+  linkedInvoices: string;
+  firstInvoiceId: string | null;
+  method: string;
+  amount: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+  status: string;
+  bankReference: string | null;
+  reference: string | null;
+  notes: string | null;
+  currency: string;
+};
+
+export async function listPaymentsForGridQuery(
+  organizationId: string,
+  filters: Partial<PaymentFilterInput> & { partial?: string },
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+
+  const base = buildPaymentWhere(organizationId, filters);
+  const and: Prisma.PaymentWhereInput[] = [base];
+  if (filters.partial === "true") {
+    and.push({ allocatedAmount: { gt: 0 }, unallocatedAmount: { gt: 0 } });
+  }
+  const where: Prisma.PaymentWhereInput = { AND: and };
+
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      select: {
+        id: true,
+        paymentNumber: true,
+        paymentDate: true,
+        method: true,
+        status: true,
+        amount: true,
+        allocatedAmount: true,
+        unallocatedAmount: true,
+        bankReference: true,
+        reference: true,
+        notes: true,
+        currency: true,
+        customer: { select: { id: true, name: true, legalName: true, displayName: true } },
+        allocations: { select: { invoice: { select: { id: true, invoiceNumber: true } } } },
+      },
+      orderBy: { paymentDate: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.payment.count({ where }),
+  ]);
+
+  const rows: PaymentGridRow[] = payments.map((p) => ({
+    id: p.id,
+    paymentNumber: p.paymentNumber,
+    paymentDate: p.paymentDate.toISOString(),
+    customerId: p.customer?.id ?? null,
+    customerName: p.customer?.name ?? "—",
+    companyName: p.customer?.legalName ?? p.customer?.displayName ?? "",
+    linkedInvoices: p.allocations
+      .map((a) => a.invoice?.invoiceNumber)
+      .filter(Boolean)
+      .join(", "),
+    firstInvoiceId: p.allocations.find((a) => a.invoice?.id)?.invoice?.id ?? null,
+    method: p.method,
+    amount: moneyToNumber(p.amount),
+    allocatedAmount: moneyToNumber(p.allocatedAmount),
+    unallocatedAmount: moneyToNumber(p.unallocatedAmount),
+    status: p.status,
+    bankReference: p.bankReference,
+    reference: p.reference,
+    notes: p.notes,
+    currency: p.currency,
+  }));
+
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildPaymentsGridCsv(rows: PaymentGridRow[]): string {
+  const header = [
+    "N° règlement",
+    "Date",
+    "Client",
+    "Société",
+    "Facture(s) liée(s)",
+    "Mode",
+    "Montant",
+    "Montant affecté",
+    "Reste à affecter",
+    "Statut",
+    "Référence bancaire",
+    "Notes",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.paymentNumber,
+      new Date(r.paymentDate).toLocaleDateString("fr-FR"),
+      r.customerName,
+      r.companyName,
+      r.linkedInvoices,
+      r.method,
+      r.amount.toFixed(2),
+      r.allocatedAmount.toFixed(2),
+      r.unallocatedAmount.toFixed(2),
+      r.status,
+      r.bankReference ?? "",
+      (r.notes ?? "").replace(/[\n;]/g, " "),
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
 }
 
 export async function listPaymentsQuery(

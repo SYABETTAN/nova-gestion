@@ -185,6 +185,127 @@ export async function listInvoicesToRemindQuery(
   return { invoices: paged, total, page, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
+export type ReminderGridRow = {
+  invoiceId: string;
+  invoiceNumber: string;
+  customerId: string;
+  customerName: string;
+  companyName: string;
+  issueDate: string;
+  dueDate: string;
+  daysOverdue: number;
+  totalIncludingTax: number;
+  amountPaid: number;
+  amountDue: number;
+  reminderLevel: string;
+  lastReminderAt: string | null;
+  reminderCount: number;
+  reminderStatus: string;
+  currency: string;
+};
+
+export async function listRemindersForGridQuery(
+  organizationId: string,
+  filters: Partial<ReminderFilterInput> & {
+    issueDateFrom?: string;
+    issueDateTo?: string;
+    daysOverdueMin?: number;
+  },
+) {
+  const where = buildInvoicesToRemindWhere(organizationId, filters);
+  if (filters.issueDateFrom || filters.issueDateTo) {
+    where.issueDate = {
+      ...(filters.issueDateFrom ? { gte: new Date(filters.issueDateFrom) } : {}),
+      ...(filters.issueDateTo ? { lte: new Date(filters.issueDateTo) } : {}),
+    };
+  }
+
+  const invoices = await prisma.invoice.findMany({
+    where,
+    select: {
+      ...invoiceSelect,
+      customer: { select: { id: true, name: true, email: true, legalName: true, displayName: true } },
+    },
+    orderBy: { dueDate: "asc" },
+    take: 5000,
+  });
+
+  const now = new Date();
+  let rows: ReminderGridRow[] = invoices.map((inv) => {
+    const enriched = enrichInvoiceForReminder(inv, now);
+    return {
+      invoiceId: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      customerId: inv.customer.id,
+      customerName: inv.customer.name,
+      companyName: inv.customer.legalName ?? inv.customer.displayName ?? "",
+      issueDate: inv.issueDate.toISOString(),
+      dueDate: inv.dueDate.toISOString(),
+      daysOverdue: enriched.daysOverdue,
+      totalIncludingTax: moneyToNumber(inv.totalIncludingTax),
+      amountPaid: moneyToNumber(inv.amountPaid),
+      amountDue: moneyToNumber(inv.amountDue),
+      reminderLevel: inv.lastReminderLevel ?? enriched.recommendedLevel,
+      lastReminderAt: inv.lastReminderAt ? inv.lastReminderAt.toISOString() : null,
+      reminderCount: inv.reminderCount,
+      reminderStatus: inv.reminderStatus,
+      currency: inv.currency,
+    };
+  });
+
+  if (filters.daysOverdueMin !== undefined) {
+    rows = rows.filter((r) => r.daysOverdue >= filters.daysOverdueMin!);
+  }
+
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+  const total = rows.length;
+  const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  return {
+    rows: paged,
+    allRows: rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildRemindersGridCsv(rows: ReminderGridRow[]): string {
+  const header = [
+    "Client",
+    "Société",
+    "Facture",
+    "Date facture",
+    "Date échéance",
+    "Jours de retard",
+    "Total TTC",
+    "Déjà payé",
+    "Solde dû",
+    "Niveau relance",
+    "Dernière relance",
+    "Statut",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.customerName,
+      r.companyName,
+      r.invoiceNumber,
+      new Date(r.issueDate).toLocaleDateString("fr-FR"),
+      new Date(r.dueDate).toLocaleDateString("fr-FR"),
+      r.daysOverdue,
+      r.totalIncludingTax.toFixed(2),
+      r.amountPaid.toFixed(2),
+      r.amountDue.toFixed(2),
+      r.reminderLevel,
+      r.lastReminderAt ? new Date(r.lastReminderAt).toLocaleDateString("fr-FR") : "",
+      r.reminderStatus,
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
+}
+
 export async function getAllInvoicesToRemindForStats(organizationId: string) {
   const invoices = await prisma.invoice.findMany({
     where: {

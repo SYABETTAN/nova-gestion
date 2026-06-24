@@ -1,38 +1,36 @@
-import { SuppliersPageClient } from "@/components/suppliers/suppliers-page-client";
+import { SuppliersSageClient } from "@/components/suppliers/suppliers-sage-client";
 import { requireAuth } from "@/lib/auth";
-import {
-  getSupplierCategoriesAction,
-  getSupplierStatsAction,
-  getSupplierTagsAction,
-  listSuppliersAction,
-} from "@/server/actions/supplier.actions";
+import { listSuppliersForSageGridAction } from "@/server/actions/supplier.actions";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | undefined>>;
 };
 
 export default async function SuppliersPage({ searchParams }: PageProps) {
-  const user = await requireAuth();
-  const params = await searchParams;
+  try {
+    const user = await requireAuth();
+    const params = await searchParams;
+    const grid = await listSuppliersForSageGridAction(params);
 
-  const [listResult, stats, tags, categories] = await Promise.all([
-    listSuppliersAction(params),
-    getSupplierStatsAction(),
-    getSupplierTagsAction(),
-    getSupplierCategoriesAction(),
-  ]);
-
-  return (
-    <SuppliersPageClient
-      user={user}
-      suppliers={listResult.suppliers}
-      tags={tags}
-      categories={categories}
-      stats={stats}
-      total={listResult.total}
-      page={listResult.page}
-      totalPages={listResult.totalPages}
-      filters={params}
-    />
-  );
+    return (
+      <SuppliersSageClient
+        user={user}
+        rows={grid.rows}
+        total={grid.total}
+        page={grid.page}
+        pageSize={grid.pageSize}
+        totalPages={grid.totalPages}
+        filters={params}
+      />
+    );
+  } catch {
+    return (
+      <div className="rounded-xl border bg-white p-8 text-center">
+        <h1 className="text-xl font-semibold">Impossible de charger les fournisseurs</h1>
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+          Vérifiez vos droits d&apos;accès et la connexion base de données, puis rechargez la page.
+        </p>
+      </div>
+    );
+  }
 }

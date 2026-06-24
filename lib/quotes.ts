@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { QuoteFilterInput } from "@/lib/quote-validators";
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 const defaultInclude = {
   customer: { select: { id: true, name: true, customerNumber: true, email: true } },
@@ -119,6 +120,135 @@ export async function getQuoteByIdQuery(organizationId: string, id: string) {
     where: { id, organizationId },
     include: defaultInclude,
   });
+}
+
+export type QuoteGridRow = {
+  id: string;
+  quoteNumber: string;
+  status: string;
+  issueDate: string;
+  validUntil: string;
+  customerName: string;
+  companyName: string;
+  totalExcludingTax: number;
+  totalVatAmount: number;
+  totalIncludingTax: number;
+  convertedToInvoice: boolean;
+  country: string;
+  updatedAt: string;
+  currency: string;
+};
+
+function criteriaToQuoteStatus(criteria?: string): Prisma.QuoteWhereInput {
+  switch (criteria) {
+    case "ACCEPTED":
+      return { status: "ACCEPTED" };
+    case "REFUSED":
+      return { status: "REFUSED" };
+    case "EXPIRED":
+      return { status: "EXPIRED" };
+    case "CONVERTED":
+      return { status: "CONVERTED" };
+    case "SENT":
+      return { status: { in: ["SENT", "VIEWED"] } };
+    case "DRAFT":
+      return { status: "DRAFT" };
+    default:
+      return {};
+  }
+}
+
+export async function listQuotesForGridQuery(
+  organizationId: string,
+  filters: Partial<QuoteFilterInput> & { criteria?: string },
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+
+  const base = buildQuoteWhere(organizationId, filters);
+  const where: Prisma.QuoteWhereInput = { AND: [base, criteriaToQuoteStatus(filters.criteria)] };
+
+  const [quotes, total] = await Promise.all([
+    prisma.quote.findMany({
+      where,
+      select: {
+        id: true,
+        quoteNumber: true,
+        status: true,
+        issueDate: true,
+        validUntil: true,
+        updatedAt: true,
+        currency: true,
+        convertedToInvoiceAt: true,
+        totalExcludingTax: true,
+        totalVatAmount: true,
+        totalIncludingTax: true,
+        customer: { select: { name: true, legalName: true, displayName: true } },
+        billingAddress: { select: { country: true } },
+      },
+      orderBy: { issueDate: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.quote.count({ where }),
+  ]);
+
+  const rows: QuoteGridRow[] = quotes.map((q) => ({
+    id: q.id,
+    quoteNumber: q.quoteNumber,
+    status: q.status,
+    issueDate: q.issueDate.toISOString(),
+    validUntil: q.validUntil.toISOString(),
+    customerName: q.customer?.name ?? "—",
+    companyName: q.customer?.legalName ?? q.customer?.displayName ?? "",
+    totalExcludingTax: moneyToNumber(q.totalExcludingTax),
+    totalVatAmount: moneyToNumber(q.totalVatAmount),
+    totalIncludingTax: moneyToNumber(q.totalIncludingTax),
+    convertedToInvoice: q.convertedToInvoiceAt != null || q.status === "CONVERTED",
+    country: q.billingAddress?.country ?? "",
+    updatedAt: q.updatedAt.toISOString(),
+    currency: q.currency,
+  }));
+
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildQuotesGridCsv(rows: QuoteGridRow[]): string {
+  const header = [
+    "N° devis",
+    "Statut",
+    "Date",
+    "Échéance",
+    "Client",
+    "Société",
+    "Total HT",
+    "Total TVA",
+    "Total TTC",
+    "Transformé",
+    "Pays",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.quoteNumber,
+      r.status,
+      new Date(r.issueDate).toLocaleDateString("fr-FR"),
+      new Date(r.validUntil).toLocaleDateString("fr-FR"),
+      r.customerName,
+      r.companyName,
+      r.totalExcludingTax.toFixed(2),
+      r.totalVatAmount.toFixed(2),
+      r.totalIncludingTax.toFixed(2),
+      r.convertedToInvoice ? "Oui" : "Non",
+      r.country,
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
 }
 
 export async function getQuoteStatsQuery(organizationId: string) {

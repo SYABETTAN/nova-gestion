@@ -3,6 +3,7 @@ import { hasFilterValue } from "@/lib/filter-params";
 import type { SupplierInvoiceFilterInput } from "@/lib/supplier-invoice-validators";
 import { prisma } from "@/lib/prisma";
 import { isSupplierInvoiceOverdue } from "@/lib/supplier-invoice-status";
+import { moneyToNumber } from "@/lib/money";
 
 function safeDate(value?: string): Date | undefined {
   if (!value) return undefined;
@@ -126,6 +127,137 @@ export async function listSupplierInvoicesQuery(
     pageSize: parsed.pageSize,
     totalPages: Math.ceil(total / parsed.pageSize),
   };
+}
+
+export type SupplierInvoiceGridRow = {
+  id: string;
+  supplierInvoiceNumber: string;
+  status: string;
+  paymentStatus: string;
+  issueDate: string;
+  dueDate: string;
+  supplierId: string;
+  supplierName: string;
+  companyName: string;
+  totalExcludingTax: number;
+  totalVatAmount: number;
+  totalIncludingTax: number;
+  amountPaid: number;
+  amountDue: number;
+  isOverdue: boolean;
+  country: string;
+  hasPdf: boolean;
+  currency: string;
+};
+
+export async function listSupplierInvoicesForGridQuery(
+  organizationId: string,
+  filters: Partial<SupplierInvoiceFilterInput>,
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+
+  const where = buildSupplierInvoiceWhere(organizationId, filters);
+  const invoices = await prisma.supplierInvoice.findMany({
+    where,
+    select: {
+      id: true,
+      supplierInvoiceNumber: true,
+      status: true,
+      paymentStatus: true,
+      issueDate: true,
+      dueDate: true,
+      currency: true,
+      totalExcludingTax: true,
+      totalVatAmount: true,
+      totalIncludingTax: true,
+      amountPaid: true,
+      amountDue: true,
+      supplier: {
+        select: {
+          id: true,
+          name: true,
+          legalName: true,
+          displayName: true,
+          addresses: { where: { isDefault: true }, take: 1, select: { country: true } },
+        },
+      },
+      _count: { select: { attachments: true } },
+    },
+    orderBy: { issueDate: "desc" },
+    take: 5000,
+  });
+
+  let rows: SupplierInvoiceGridRow[] = invoices.map((i) => ({
+    id: i.id,
+    supplierInvoiceNumber: i.supplierInvoiceNumber,
+    status: i.status,
+    paymentStatus: i.paymentStatus,
+    issueDate: i.issueDate.toISOString(),
+    dueDate: i.dueDate.toISOString(),
+    supplierId: i.supplier.id,
+    supplierName: i.supplier.name,
+    companyName: i.supplier.legalName ?? i.supplier.displayName ?? "",
+    totalExcludingTax: moneyToNumber(i.totalExcludingTax),
+    totalVatAmount: moneyToNumber(i.totalVatAmount),
+    totalIncludingTax: moneyToNumber(i.totalIncludingTax),
+    amountPaid: moneyToNumber(i.amountPaid),
+    amountDue: moneyToNumber(i.amountDue),
+    isOverdue: i.status === "VALIDATED" && isSupplierInvoiceOverdue(i.dueDate, i.amountDue),
+    country: i.supplier.addresses[0]?.country ?? "",
+    hasPdf: i._count.attachments > 0,
+    currency: i.currency,
+  }));
+
+  if (filters.overdue === "true") rows = rows.filter((r) => r.isOverdue);
+
+  const total = rows.length;
+  const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  return {
+    rows: paged,
+    allRows: rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildSupplierInvoicesGridCsv(rows: SupplierInvoiceGridRow[]): string {
+  const header = [
+    "N° facture fournisseur",
+    "Statut",
+    "Date facture",
+    "Date échéance",
+    "Fournisseur",
+    "Société",
+    "Total HT",
+    "Total TVA",
+    "Total TTC",
+    "Déjà payé",
+    "Solde dû",
+    "Pays",
+    "Document PDF",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.supplierInvoiceNumber,
+      r.status,
+      new Date(r.issueDate).toLocaleDateString("fr-FR"),
+      new Date(r.dueDate).toLocaleDateString("fr-FR"),
+      r.supplierName,
+      r.companyName,
+      r.totalExcludingTax.toFixed(2),
+      r.totalVatAmount.toFixed(2),
+      r.totalIncludingTax.toFixed(2),
+      r.amountPaid.toFixed(2),
+      r.amountDue.toFixed(2),
+      r.country,
+      r.hasPdf ? "Oui" : "Non",
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
 }
 
 export async function getSupplierInvoiceByIdQuery(organizationId: string, id: string) {

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { hasFilterValue } from "@/lib/filter-params";
 import type { SupplierFilterInput } from "@/lib/supplier-validators";
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 const defaultInclude = {
   category: true,
@@ -109,6 +110,165 @@ export async function listSuppliersQuery(
     pageSize: parsed.pageSize,
     totalPages: Math.ceil(total / parsed.pageSize),
   };
+}
+
+export type SupplierGridRow = {
+  id: string;
+  supplierNumber: string;
+  companyName: string;
+  contact: string;
+  email: string | null;
+  phone: string | null;
+  city: string;
+  country: string;
+  siret: string | null;
+  vatNumber: string | null;
+  totalPurchases: number;
+  totalPaid: number;
+  balanceDue: number;
+  lastInvoiceDate: string | null;
+  status: string;
+  currency: string;
+};
+
+const NON_DRAFT_SUPPLIER_INVOICE: Prisma.SupplierInvoiceWhereInput["status"] = {
+  notIn: ["DRAFT", "CANCELLED"],
+};
+
+export async function listSuppliersForGridQuery(
+  organizationId: string,
+  filters: Partial<SupplierFilterInput> & { country?: string; balance?: string },
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+
+  const base = buildSupplierWhere(organizationId, filters);
+  const and: Prisma.SupplierWhereInput[] = [base];
+  if (hasFilterValue(filters.country)) {
+    and.push({ addresses: { some: { country: { contains: filters.country, mode: "insensitive" } } } });
+  }
+  if (filters.balance === "due") {
+    and.push({ supplierInvoices: { some: { amountDue: { gt: 0 }, status: NON_DRAFT_SUPPLIER_INVOICE } } });
+  }
+  if (filters.balance === "open") {
+    and.push({ supplierInvoices: { some: { paymentStatus: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] }, status: NON_DRAFT_SUPPLIER_INVOICE } } });
+  }
+  const where: Prisma.SupplierWhereInput = { AND: and };
+
+  const [suppliers, total] = await Promise.all([
+    prisma.supplier.findMany({
+      where,
+      select: {
+        id: true,
+        supplierNumber: true,
+        name: true,
+        legalName: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        siret: true,
+        vatNumber: true,
+        currency: true,
+        status: true,
+        contacts: {
+          where: { isPrimary: true },
+          take: 1,
+          select: { firstName: true, lastName: true },
+        },
+        addresses: {
+          where: { isDefault: true },
+          take: 1,
+          select: { city: true, country: true },
+        },
+      },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.supplier.count({ where }),
+  ]);
+
+  const ids = suppliers.map((s) => s.id);
+  const sums = ids.length
+    ? await prisma.supplierInvoice.groupBy({
+        by: ["supplierId"],
+        where: { organizationId, supplierId: { in: ids }, status: NON_DRAFT_SUPPLIER_INVOICE, isArchived: false },
+        _sum: { totalExcludingTax: true, amountPaid: true, amountDue: true },
+        _max: { issueDate: true },
+      })
+    : [];
+  const sumBySupplier = new Map(sums.map((s) => [s.supplierId, s]));
+
+  const rows: SupplierGridRow[] = suppliers.map((s) => {
+    const agg = sumBySupplier.get(s.id);
+    const contact = s.contacts[0]
+      ? `${s.contacts[0].firstName ?? ""} ${s.contacts[0].lastName ?? ""}`.trim()
+      : "";
+    return {
+      id: s.id,
+      supplierNumber: s.supplierNumber,
+      companyName: s.legalName ?? s.displayName ?? s.name,
+      contact,
+      email: s.email,
+      phone: s.phone,
+      city: s.addresses[0]?.city ?? "",
+      country: s.addresses[0]?.country ?? "",
+      siret: s.siret,
+      vatNumber: s.vatNumber,
+      totalPurchases: moneyToNumber(agg?._sum.totalExcludingTax ?? 0),
+      totalPaid: moneyToNumber(agg?._sum.amountPaid ?? 0),
+      balanceDue: moneyToNumber(agg?._sum.amountDue ?? 0),
+      lastInvoiceDate: agg?._max.issueDate ? agg._max.issueDate.toISOString() : null,
+      status: s.status,
+      currency: s.currency,
+    };
+  });
+
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildSuppliersGridCsv(rows: SupplierGridRow[]): string {
+  const header = [
+    "Code fournisseur",
+    "Société",
+    "Contact",
+    "Téléphone",
+    "Email",
+    "Ville",
+    "Pays",
+    "SIRET",
+    "TVA intracom.",
+    "Total achats HT",
+    "Total payé",
+    "Solde",
+    "Dernière facture",
+    "Statut",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.supplierNumber,
+      r.companyName,
+      r.contact,
+      r.phone ?? "",
+      r.email ?? "",
+      r.city,
+      r.country,
+      r.siret ?? "",
+      r.vatNumber ?? "",
+      r.totalPurchases.toFixed(2),
+      r.totalPaid.toFixed(2),
+      r.balanceDue.toFixed(2),
+      r.lastInvoiceDate ? new Date(r.lastInvoiceDate).toLocaleDateString("fr-FR") : "",
+      r.status,
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
 }
 
 export async function getSupplierByIdQuery(organizationId: string, id: string) {

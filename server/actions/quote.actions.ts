@@ -17,11 +17,13 @@ import {
   type QuoteLineInput,
 } from "@/lib/quote-validators";
 import {
+  buildQuotesGridCsv,
   getCustomersForFilterQuery,
   getQuoteByIdQuery,
   getQuoteFormDataQuery,
   getQuotesForExportQuery,
   getQuoteStatsQuery,
+  listQuotesForGridQuery,
   listQuotesQuery,
 } from "@/lib/quotes";
 import {
@@ -138,6 +140,39 @@ export async function listQuotesAction(searchParams: Record<string, string | und
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
 
   return listQuotesQuery(user.organizationId, filters);
+}
+
+function parseQuoteGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    status: searchParams.status || undefined,
+    criteria: searchParams.criteria || undefined,
+    customerId: searchParams.customerId || undefined,
+    issueDateFrom: searchParams.issueDateFrom || undefined,
+    issueDateTo: searchParams.issueDateTo || undefined,
+    archived: (searchParams.archived as "true" | "false" | "only" | undefined) || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listQuotesForSageGridAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "QUOTES_READ");
+  return listQuotesForGridQuery(user.organizationId, parseQuoteGridFilters(searchParams));
+}
+
+export async function exportQuotesGridCsvAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "QUOTES_READ");
+  const result = await listQuotesForGridQuery(user.organizationId, {
+    ...parseQuoteGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildQuotesGridCsv(result.rows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `devis-${date}.csv` };
 }
 
 export async function getQuoteStatsAction() {

@@ -29,12 +29,14 @@ import {
   sendReminderSimulationSchema,
 } from "@/lib/reminder-validators";
 import {
+  buildRemindersGridCsv,
   getInvoiceForReminderAction,
   getReminderByIdQuery,
   getReminderStatsQuery,
   getInvoicesForReminderExportQuery,
   getReminderHistoryForExportQuery,
   listInvoicesToRemindQuery,
+  listRemindersForGridQuery,
   listReminderHistoryQuery,
 } from "@/lib/reminders";
 import { absoluteUrl } from "@/lib/email/app-url";
@@ -253,6 +255,52 @@ export async function getReminderStatsAction() {
   requirePermission(user, "REMINDERS_READ");
   const data = await getReminderStatsQuery(user.organizationId);
   return computeReminderStats(data.invoices, data.remindersThisMonth);
+}
+
+function parseReminderGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    customerId: searchParams.customerId || undefined,
+    level: searchParams.level as ReminderLevel | undefined,
+    reminded: (searchParams.reminded as "true" | "false" | undefined) || undefined,
+    noReminder: (searchParams.noReminder as "true" | "false" | undefined) || undefined,
+    issueDateFrom: searchParams.issueDateFrom || undefined,
+    issueDateTo: searchParams.issueDateTo || undefined,
+    daysOverdueMin: searchParams.daysOverdueMin ? Number(searchParams.daysOverdueMin) : undefined,
+    amountMin: searchParams.amountMin ? Number(searchParams.amountMin) : undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listRemindersForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "REMINDERS_READ");
+  const result = await listRemindersForGridQuery(user.organizationId, parseReminderGridFilters(searchParams));
+  return {
+    rows: result.rows,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+  };
+}
+
+export async function exportRemindersGridCsvAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "REMINDERS_READ");
+  const result = await listRemindersForGridQuery(user.organizationId, {
+    ...parseReminderGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildRemindersGridCsv(result.allRows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `relances-${date}.csv` };
 }
 
 export async function getReminderByIdAction(id: string) {

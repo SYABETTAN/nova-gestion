@@ -1,33 +1,41 @@
-import { QuotesPageClient } from "@/components/quotes/quotes-page-client";
+import { QuotesSageClient } from "@/components/quotes/quotes-sage-client";
 import { requireAuth } from "@/lib/auth";
 import {
   getCustomersForQuoteFilterAction,
-  getQuoteStatsAction,
-  listQuotesAction,
+  listQuotesForSageGridAction,
 } from "@/server/actions/quote.actions";
 
 type PageProps = { searchParams: Promise<Record<string, string | undefined>> };
 
 export default async function QuotesPage({ searchParams }: PageProps) {
-  const user = await requireAuth();
-  const params = await searchParams;
+  try {
+    const user = await requireAuth();
+    const params = await searchParams;
+    const [grid, customers] = await Promise.all([
+      listQuotesForSageGridAction(params),
+      getCustomersForQuoteFilterAction(),
+    ]);
 
-  const [list, stats, customers] = await Promise.all([
-    listQuotesAction(params),
-    getQuoteStatsAction(),
-    getCustomersForQuoteFilterAction(),
-  ]);
-
-  return (
-    <QuotesPageClient
-      user={user}
-      quotes={list.quotes}
-      customers={customers}
-      stats={stats}
-      total={list.total}
-      page={list.page}
-      totalPages={list.totalPages}
-      filters={params}
-    />
-  );
+    return (
+      <QuotesSageClient
+        user={user}
+        rows={grid.rows}
+        total={grid.total}
+        page={grid.page}
+        pageSize={grid.pageSize}
+        totalPages={grid.totalPages}
+        customers={customers.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))}
+        filters={params}
+      />
+    );
+  } catch {
+    return (
+      <div className="rounded-xl border bg-white p-8 text-center">
+        <h1 className="text-xl font-semibold">Impossible de charger les devis</h1>
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+          Vérifiez vos droits d&apos;accès et la connexion base de données, puis rechargez la page.
+        </p>
+      </div>
+    );
+  }
 }

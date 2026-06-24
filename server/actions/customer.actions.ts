@@ -15,10 +15,12 @@ import {
 } from "@/lib/customer-validators";
 import { parseTagIds } from "@/lib/customer-utils";
 import {
+  buildCustomersGridCsv,
   getAllTagsQuery,
   getCustomerByIdQuery,
   getCustomerOptionByIdQuery,
   getCustomerStatsQuery,
+  listCustomersForGridQuery,
   listCustomersQuery,
   searchCustomersForSelectQuery,
 } from "@/lib/customers";
@@ -42,6 +44,43 @@ export async function listCustomersAction(searchParams: Record<string, string | 
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
 
   return listCustomersQuery(user.organizationId, filters);
+}
+
+function parseGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    status: searchParams.status || undefined,
+    type: searchParams.type || undefined,
+    city: searchParams.city || undefined,
+    country: searchParams.country || undefined,
+    balance: searchParams.balance || undefined,
+    archived: (searchParams.archived as "true" | "false" | "only" | undefined) || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listCustomersForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_READ");
+  return listCustomersForGridQuery(user.organizationId, parseGridFilters(searchParams));
+}
+
+export async function exportCustomersGridCsvAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "CUSTOMERS_READ");
+  const result = await listCustomersForGridQuery(user.organizationId, {
+    ...parseGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildCustomersGridCsv(result.rows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `clients-${date}.csv` };
 }
 
 export async function getCustomerStatsAction() {

@@ -20,14 +20,17 @@ import {
   createPaymentSchema,
   paymentFilterSchema,
   updatePaymentSchema,
+  type PaymentFilterInput,
 } from "@/lib/payment-validators";
 import {
+  buildPaymentsGridCsv,
   getCustomersForPaymentFilterQuery,
   getPaymentByIdQuery,
   getPaymentFormDataQuery,
   getPaymentsForExportQuery,
   getPaymentStatsQuery,
   getRecentPaymentsByCustomerQuery,
+  listPaymentsForGridQuery,
   listPaymentsQuery,
 } from "@/lib/payments";
 import { roundMoney } from "@/lib/pricing";
@@ -87,6 +90,44 @@ export async function listPaymentsAction(filters: Record<string, string | undefi
   const parsed = paymentFilterSchema.safeParse(filters);
   const f = parsed.success ? parsed.data : paymentFilterSchema.parse({});
   return listPaymentsQuery(user.organizationId, f);
+}
+
+function parsePaymentGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    status: searchParams.status as PaymentFilterInput["status"],
+    method: searchParams.method as PaymentFilterInput["method"],
+    customerId: searchParams.customerId || undefined,
+    unallocated: (searchParams.unallocated as "true" | "false" | undefined) || undefined,
+    partial: searchParams.partial || undefined,
+    paymentDateFrom: searchParams.paymentDateFrom || undefined,
+    paymentDateTo: searchParams.paymentDateTo || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listPaymentsForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "PAYMENTS_READ");
+  return listPaymentsForGridQuery(user.organizationId, parsePaymentGridFilters(searchParams));
+}
+
+export async function exportPaymentsGridCsvAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "PAYMENTS_READ");
+  const result = await listPaymentsForGridQuery(user.organizationId, {
+    ...parsePaymentGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildPaymentsGridCsv(result.rows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `reglements-${date}.csv` };
 }
 
 export async function getPaymentByIdAction(id: string) {

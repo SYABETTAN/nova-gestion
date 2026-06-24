@@ -205,6 +205,172 @@ export async function listItemsQuery(
   };
 }
 
+export type ItemGridRow = {
+  id: string;
+  itemNumber: string;
+  sku: string | null;
+  name: string;
+  description: string | null;
+  type: string;
+  status: string;
+  categoryName: string | null;
+  supplierName: string | null;
+  purchasePriceExcludingTax: number;
+  salePriceExcludingTax: number;
+  defaultVatRate: number;
+  isStockable: boolean;
+  stockInitial: number;
+  quantitySold: number;
+  stockRemaining: number | null;
+  revenueExcludingTax: number;
+  lastSaleDate: string | null;
+  currency: string;
+  unitSymbol: string | null;
+};
+
+export async function listItemsForGridQuery(
+  organizationId: string,
+  filters: Partial<ItemFilterInput> & {
+    stockState?: string; // positive | zero | negative
+    saleFrom?: string;
+    saleTo?: string;
+  },
+) {
+  const { getSoldStatsByItemIdsQuery } = await import("@/lib/item-sales");
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(10, filters.pageSize ?? 50));
+
+  const where = buildItemWhere(organizationId, filters);
+  if (filters.stockState === "positive") where.stockQuantity = { gt: 0 };
+  else if (filters.stockState === "zero") where.stockQuantity = { equals: 0 };
+  else if (filters.stockState === "negative") where.stockQuantity = { lt: 0 };
+
+  const [items, total] = await Promise.all([
+    prisma.item.findMany({
+      where,
+      select: {
+        id: true,
+        itemNumber: true,
+        sku: true,
+        name: true,
+        description: true,
+        type: true,
+        status: true,
+        currency: true,
+        defaultVatRate: true,
+        salePriceExcludingTax: true,
+        purchasePriceExcludingTax: true,
+        isStockable: true,
+        stockQuantity: true,
+        category: { select: { name: true } },
+        supplier: { select: { name: true } },
+        unit: { select: { symbol: true } },
+      },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.item.count({ where }),
+  ]);
+
+  const ids = items.map((i) => i.id);
+  const saleFilters = {
+    from: filters.saleFrom ? new Date(filters.saleFrom) : undefined,
+    to: filters.saleTo ? new Date(`${filters.saleTo}T23:59:59.999`) : undefined,
+  };
+  const [soldMap, lastSales] = await Promise.all([
+    getSoldStatsByItemIdsQuery(organizationId, ids, saleFilters),
+    ids.length
+      ? prisma.invoiceLine.findMany({
+          where: {
+            organizationId,
+            itemId: { in: ids },
+            invoice: { organizationId, isArchived: false, status: { notIn: ["DRAFT", "CANCELLED"] } },
+          },
+          select: { itemId: true, invoice: { select: { issueDate: true } } },
+          orderBy: { invoice: { issueDate: "desc" } },
+          distinct: ["itemId"],
+        })
+      : Promise.resolve([] as Array<{ itemId: string | null; invoice: { issueDate: Date } }>),
+  ]);
+  const lastSaleByItem = new Map<string, Date>();
+  for (const l of lastSales) {
+    if (l.itemId && !lastSaleByItem.has(l.itemId)) lastSaleByItem.set(l.itemId, l.invoice.issueDate);
+  }
+
+  const rows: ItemGridRow[] = items.map((i) => {
+    const sold = soldMap.get(i.id);
+    const stockInitial = moneyToNumber(i.stockQuantity);
+    const quantitySold = sold?.quantitySold ?? 0;
+    return {
+      id: i.id,
+      itemNumber: i.itemNumber,
+      sku: i.sku,
+      name: i.name,
+      description: i.description,
+      type: i.type,
+      status: i.status,
+      categoryName: i.category?.name ?? null,
+      supplierName: i.supplier?.name ?? null,
+      purchasePriceExcludingTax: moneyToNumber(i.purchasePriceExcludingTax),
+      salePriceExcludingTax: moneyToNumber(i.salePriceExcludingTax),
+      defaultVatRate: moneyToNumber(i.defaultVatRate),
+      isStockable: i.isStockable,
+      stockInitial,
+      quantitySold,
+      stockRemaining: i.isStockable ? Math.max(0, stockInitial - quantitySold) : null,
+      revenueExcludingTax: sold?.revenueExcludingTax ?? 0,
+      lastSaleDate: lastSaleByItem.get(i.id)?.toISOString() ?? null,
+      currency: i.currency,
+      unitSymbol: i.unit?.symbol ?? null,
+    };
+  });
+
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export function buildItemsGridCsv(rows: ItemGridRow[]): string {
+  const header = [
+    "Référence",
+    "Désignation",
+    "Catégorie",
+    "Fournisseur",
+    "Prix achat HT",
+    "Prix vente HT",
+    "TVA",
+    "Stock initial",
+    "Qté vendue",
+    "Stock restant",
+    "CA HT vendu",
+    "Dernière vente",
+    "Statut",
+  ].join(";");
+  const lines = rows.map((r) =>
+    [
+      r.itemNumber,
+      r.name,
+      r.categoryName ?? "",
+      r.supplierName ?? "",
+      r.purchasePriceExcludingTax.toFixed(2),
+      r.salePriceExcludingTax.toFixed(2),
+      `${r.defaultVatRate}%`,
+      r.stockInitial,
+      r.quantitySold,
+      r.stockRemaining ?? "",
+      r.revenueExcludingTax.toFixed(2),
+      r.lastSaleDate ? new Date(r.lastSaleDate).toLocaleDateString("fr-FR") : "",
+      r.status,
+    ].join(";"),
+  );
+  return [header, ...lines].join("\n");
+}
+
 export async function getItemByIdQuery(organizationId: string, id: string) {
   return prisma.item.findFirst({
     where: { id, organizationId },

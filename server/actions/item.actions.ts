@@ -13,6 +13,7 @@ import { computeItemPricing } from "@/lib/pricing";
 import { mapMoneyFieldsToDb, ITEM_MONEY_FIELDS } from "@/lib/money-db";
 import { moneyEq, toDbDecimal } from "@/lib/money";
 import {
+  buildItemsGridCsv,
   buildItemWhere,
   getItemByIdQuery,
   getItemCategoriesQuery,
@@ -20,6 +21,7 @@ import {
   getItemStatsQuery,
   getItemTagsQuery,
   getItemUnitsQuery,
+  listItemsForGridQuery,
   listItemsQuery,
   searchItemsForSelectQuery,
 } from "@/lib/items";
@@ -82,6 +84,41 @@ export async function listItemsAction(searchParams: Record<string, string | unde
   const parsed = itemFilterSchema.safeParse(normalizeFilterSearchParams(searchParams));
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
   return listItemsQuery(user.organizationId, filters);
+}
+
+function parseItemGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    type: searchParams.type || undefined,
+    status: searchParams.status || undefined,
+    categoryId: searchParams.categoryId || undefined,
+    supplierId: searchParams.supplierId || undefined,
+    stockState: searchParams.stockState || undefined,
+    saleFrom: searchParams.saleFrom || undefined,
+    saleTo: searchParams.saleTo || undefined,
+    archived: (searchParams.archived as "true" | "false" | "only" | undefined) || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listItemsForSageGridAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  return listItemsForGridQuery(user.organizationId, parseItemGridFilters(searchParams));
+}
+
+export async function exportItemsGridCsvAction(searchParams: Record<string, string | undefined>) {
+  const user = await requireAuth();
+  requirePermission(user, "ITEMS_READ");
+  const result = await listItemsForGridQuery(user.organizationId, {
+    ...parseItemGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildItemsGridCsv(result.rows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `articles-${date}.csv` };
 }
 
 export async function getItemStatsAction() {

@@ -18,10 +18,12 @@ import {
 } from "@/lib/supplier-invoice-validators";
 import { computeSupplierInvoiceStats } from "@/lib/supplier-invoice-utils";
 import {
+  buildSupplierInvoicesGridCsv,
   getSupplierInvoiceByIdQuery,
   getSupplierInvoiceFormDataQuery,
   getSupplierInvoiceStatsQuery,
   getSupplierInvoicesForExportQuery,
+  listSupplierInvoicesForGridQuery,
   listSupplierInvoicesQuery,
 } from "@/lib/supplier-invoices";
 import {
@@ -133,6 +135,54 @@ export async function getSupplierInvoiceStatsAction() {
   requirePermission(user, "SUPPLIER_INVOICES_READ");
   const invoices = await getSupplierInvoiceStatsQuery(user.organizationId);
   return computeSupplierInvoiceStats(invoices);
+}
+
+function parseSupplierInvoiceGridFilters(searchParams: Record<string, string | undefined>) {
+  return {
+    q: searchParams.q || undefined,
+    supplierId: searchParams.supplierId || undefined,
+    status: searchParams.status || undefined,
+    paymentStatus: searchParams.paymentStatus || undefined,
+    overdue: (searchParams.overdue as "true" | "false" | undefined) || undefined,
+    issueDateFrom: searchParams.issueDateFrom || undefined,
+    issueDateTo: searchParams.issueDateTo || undefined,
+    archived: (searchParams.archived as "true" | "false" | "only" | undefined) || undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
+    pageSize: searchParams.pageSize ? Number(searchParams.pageSize) : undefined,
+  };
+}
+
+export async function listSupplierInvoicesForSageGridAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "SUPPLIER_INVOICES_READ");
+  const result = await listSupplierInvoicesForGridQuery(
+    user.organizationId,
+    parseSupplierInvoiceGridFilters(searchParams),
+  );
+  return {
+    rows: result.rows,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+  };
+}
+
+export async function exportSupplierInvoicesGridCsvAction(
+  searchParams: Record<string, string | undefined>,
+) {
+  const user = await requireAuth();
+  requirePermission(user, "SUPPLIER_INVOICES_READ");
+  const result = await listSupplierInvoicesForGridQuery(user.organizationId, {
+    ...parseSupplierInvoiceGridFilters(searchParams),
+    page: 1,
+    pageSize: 5000,
+  });
+  const csv = buildSupplierInvoicesGridCsv(result.allRows);
+  const date = new Date().toISOString().slice(0, 10);
+  return { success: true as const, csv, filename: `factures-fournisseurs-${date}.csv` };
 }
 
 export async function getSupplierInvoiceByIdAction(id: string) {
